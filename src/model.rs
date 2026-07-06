@@ -1,0 +1,55 @@
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Song {
+    pub metadata: Metadata,
+    pub bars: Vec<Bar>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Metadata {
+    pub tempo: Option<u16>,
+    pub time_signature: Option<TimeSignature>,
+    pub pulse: Option<Pulse>,
+    pub subdivision: Option<u8>,
+    pub count: Option<CountStyle>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimeSignature {
+    pub numerator: u8,
+    pub denominator: u8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pulse {
+    Quarter,
+    DottedQuarter,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CountStyle {
+    OneAnd,
+    OneAndA,
+    OneEAndA,
+    OneAAndA,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Bar {
+    pub line: usize,
+    pub beats: Vec<BeatPattern>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BeatPattern {
+    pub chord: String,
+    pub chord_line: usize,
+    pub slots: Vec<StrumSymbol>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StrumSymbol {
+    Down,
+    Up,
+    Rest,
+    Muted,
+}
