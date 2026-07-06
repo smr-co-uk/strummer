@@ -11,8 +11,21 @@ env:
 
 jobs:
   build-test-check:
-    name: Build, test, and check
-    runs-on: ubuntu-latest
+    name: Build, test, and check (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+          - name: macos-x86_64
+            os: macos-15-intel
+          - name: macos-arm64
+            os: macos-latest
+          - name: windows-x86_64
+            os: windows-latest
 
     steps:
       - name: Checkout

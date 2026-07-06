@@ -10,8 +10,25 @@ env:
 
 jobs:
   build-test-check-release:
-    name: Build, test, check, and release
-    runs-on: ubuntu-latest
+    name: Build, test, check, and release (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            artifact_path: target/release/strum2midi
+          - name: macos-x86_64
+            os: macos-15-intel
+            artifact_path: target/release/strum2midi
+          - name: macos-arm64
+            os: macos-latest
+            artifact_path: target/release/strum2midi
+          - name: windows-x86_64
+            os: windows-latest
+            artifact_path: target/release/strum2midi.exe
 
     steps:
       - name: Checkout
@@ -40,6 +57,6 @@ jobs:
       - name: Upload release binary
         uses: actions/upload-artifact@v4
         with:
-          name: strum2midi-linux-x86_64
-          path: target/release/strum2midi
+          name: strum2midi-${{ matrix.name }}
+          path: ${{ matrix.artifact_path }}
           if-no-files-found: error
