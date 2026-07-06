@@ -1,0 +1,45 @@
+name: Main Release
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-test-check-release:
+    name: Build, test, check, and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Release build
+        run: cargo build --release
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: strum2midi-linux-x86_64
+          path: target/release/strum2midi
+          if-no-files-found: error
