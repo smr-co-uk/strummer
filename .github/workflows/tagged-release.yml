@@ -118,6 +118,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          set -eo pipefail
+
           files=()
           while IFS= read -r -d '' file; do
             files+=("$file")
@@ -128,7 +130,21 @@ jobs:
             exit 1
           fi
 
-          gh release create "${TAG}" "${files[@]}" \
-            --verify-tag \
-            --title "${TAG}" \
-            --notes "Release ${TAG}"
+          echo "Files to attach:"
+          for f in "${files[@]}"; do
+            echo "  - $f"
+          done
+
+          # If a release with this tag already exists, upload assets (replace existing with --clobber).
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists — uploading assets (will clobber existing assets)..."
+            gh release upload "${TAG}" "${files[@]}" --clobber
+            # Optionally update release notes/title:
+            # gh release edit "${TAG}" --title "${TAG}" --notes "Release ${TAG}"
+          else
+            echo "Creating release ${TAG}..."
+            gh release create "${TAG}" "${files[@]}" \
+              --verify-tag \
+              --title "${TAG}" \
+              --notes "Release ${TAG}"
+          fi
