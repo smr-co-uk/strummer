@@ -60,8 +60,23 @@ Optional future metadata may include:
 swing: false
 capo: 0
 velocity: 90
+```
+
+Optional instrument metadata:
+
+```text
 instrument: acoustic_guitar
 ```
+
+If `instrument` is omitted, the program shall use `acoustic_guitar`.
+
+Supported values:
+
+| Value | MIDI program |
+|---|---:|
+| `acoustic_guitar` | 25 |
+| `electric_guitar_clean` | 27 |
+| `nylon_guitar` | 24 |
 
 Optional rhythm metadata:
 
@@ -272,6 +287,16 @@ The implementation may use a short low-velocity chord, a percussion note, or ano
 
 A rest shall produce no MIDI notes.
 
+### 6.7 Instrument
+
+The MIDI file shall contain a program change event for the selected instrument before note events.
+
+The default instrument shall be:
+
+```text
+acoustic_guitar
+```
+
 ## 7. Timing
 
 The tool shall calculate MIDI timing from:
@@ -329,6 +354,7 @@ Validation should detect:
 - Unsupported beat
 - Unsupported subdivision
 - Unsupported count style
+- Unsupported instrument
 - Empty input file
 - Malformed metadata line
 
@@ -347,6 +373,7 @@ Minimum requirements:
 - One MIDI track
 - Tempo event
 - Time signature event
+- Program change event
 - Note on/off events
 - End-of-track event
 

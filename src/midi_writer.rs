@@ -82,6 +82,12 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
     track.push(denominator_power(time_signature.denominator));
     track.extend([24, 8]);
 
+    write_delta(&mut track, 0);
+    track.extend([
+        0xC0,
+        crate::validate::resolved_instrument(song).midi_program(),
+    ]);
+
     let mut current_tick = 0;
     for event in events {
         write_delta(&mut track, event.tick - current_tick);
@@ -194,6 +200,27 @@ mod tests {
             midi.windows(6)
                 .any(|window| window == [0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20])
         );
+        assert!(midi.windows(2).any(|window| window == [0xC0, 25]));
+    }
+
+    #[test]
+    fn writes_explicit_instrument_program_change() {
+        let song = parser::parse(
+            "tempo: 120\ntime: 4/4\ninstrument: electric_guitar_clean\n\nC\n---- ---- ---- ----\n",
+        )
+        .unwrap();
+        validate::validate(&song).unwrap();
+
+        let midi = write_midi(
+            &song,
+            MidiOptions {
+                velocity: 90,
+                strum_spread_ms: 20,
+            },
+        )
+        .unwrap();
+
+        assert!(midi.windows(2).any(|window| window == [0xC0, 27]));
     }
 
     #[test]

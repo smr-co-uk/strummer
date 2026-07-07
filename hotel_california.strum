@@ -1,10 +1,6 @@
 tempo: 92
 time: 4/4
-count: 1&
+subdivision: 8
 
-Bm
-D- DU D- DU | DU D- D- DU
-C                          Am
-DUDU D-U- --U- D-U- | --U- D-U- --U- D-U-
-F                          G
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+Bm                          F7
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU

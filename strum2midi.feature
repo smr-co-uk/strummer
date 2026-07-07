@@ -46,6 +46,33 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid --tempo 100"
     Then the MIDI file should contain a tempo event for 100 BPM
 
+  Scenario: Use acoustic guitar as the default instrument
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain a program change event for acoustic guitar
+
+  Scenario: Use instrument from the input file
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      instrument: electric_guitar_clean
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain a program change event for clean electric guitar
+
   Scenario: Downstroke plays chord notes from low to high
     Given a file named "song.strum" containing:
       """
@@ -134,6 +161,20 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
     And the error should mention "malformed metadata"
+
+  Scenario: Reject an unsupported instrument
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      instrument: banjo
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should fail
+    And the error should mention "unsupported instrument"
 
   Scenario: Reject a missing tempo
     Given a file named "song.strum" containing:

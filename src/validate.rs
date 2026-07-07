@@ -71,6 +71,12 @@ fn resolved_subdivision(song: &Song) -> Result<u8> {
     }
 }
 
+pub fn resolved_instrument(song: &Song) -> crate::model::Instrument {
+    song.metadata
+        .instrument
+        .unwrap_or(crate::model::Instrument::AcousticGuitar)
+}
+
 fn validate_count(count: Option<CountStyle>, beat: Beat, subdivision: u8) -> Result<()> {
     let Some(count) = count else {
         return Ok(());

@@ -11,6 +11,7 @@ pub struct Metadata {
     pub beat: Option<Beat>,
     pub subdivision: Option<u8>,
     pub count: Option<CountStyle>,
+    pub instrument: Option<Instrument>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +32,23 @@ pub enum CountStyle {
     OneAndA,
     OneEAndA,
     OneAAndA,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Instrument {
+    AcousticGuitar,
+    ElectricGuitarClean,
+    NylonGuitar,
+}
+
+impl Instrument {
+    pub fn midi_program(self) -> u8 {
+        match self {
+            Self::AcousticGuitar => 25,
+            Self::ElectricGuitarClean => 27,
+            Self::NylonGuitar => 24,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

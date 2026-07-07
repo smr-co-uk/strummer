@@ -41,6 +41,36 @@ fn command_line_tempo_overrides_metadata() {
 }
 
 #[test]
+fn defaults_to_acoustic_guitar_instrument() {
+    let input = "tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, root) = run_case("default-instrument", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert!(midi.windows(2).any(|window| window == [0xC0, 25]));
+}
+
+#[test]
+fn supports_instrument_metadata() {
+    let input =
+        "tempo: 92\ntime: 4/4\ninstrument: electric_guitar_clean\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, root) = run_case("instrument", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert!(midi.windows(2).any(|window| window == [0xC0, 27]));
+}
+
+#[test]
+fn rejects_unsupported_instrument_metadata() {
+    let input = "tempo: 92\ntime: 4/4\ninstrument: banjo\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, _root) = run_case("bad-instrument", input, &[]);
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("unsupported instrument"));
+}
+
+#[test]
 fn rests_create_no_note_events() {
     let input = "tempo: 92\ntime: 4/4\n\nC\n---- ---- ---- ----\n";
     let (output, root) = run_case("rests", input, &[]);
@@ -279,6 +309,12 @@ fn note_events(midi: &[u8]) -> Vec<(u8, u8, u8)> {
                 }
                 events.push((status, midi[index], midi[index + 1]));
                 index += 2;
+            }
+            0xC0..=0xDF => {
+                if index + 1 > midi.len() {
+                    break;
+                }
+                index += 1;
             }
             0xFF => {
                 if index + 1 >= midi.len() {

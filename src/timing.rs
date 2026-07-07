@@ -80,6 +80,7 @@ mod tests {
                 beat: None,
                 subdivision: None,
                 count: None,
+                instrument: None,
             },
             bars: Vec::new(),
         };
@@ -99,6 +100,7 @@ mod tests {
                 beat: Some(Beat::DottedQuarter),
                 subdivision: Some(8),
                 count: None,
+                instrument: None,
             },
             bars: Vec::new(),
         };

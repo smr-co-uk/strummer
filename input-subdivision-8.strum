@@ -2,6 +2,7 @@ tempo: 92
 time: 4/4
 subdivision: 8
 count: 1&
+instrument: acoustic_guitar
 
 C             Am
 DU DU DU DU | ...
