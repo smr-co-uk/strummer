@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::error::{AppError, Result};
+use strum2midi::error::{AppError, Result};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Cli {

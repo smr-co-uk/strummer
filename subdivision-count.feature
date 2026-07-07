@@ -161,7 +161,7 @@ Feature: Use subdivision and count metadata for strumming patterns
       """
       tempo: 72
       time: 6/8
-      pulse: dotted-quarter
+      beat: dotted-quarter
       subdivision: 8
       count: 1&a
 
@@ -170,10 +170,10 @@ Feature: Use subdivision and count metadata for strumming patterns
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
-    And the MIDI file should contain two dotted-quarter pulses
-    And each pulse should contain three eighth-note slots
+    And the MIDI file should contain two dotted-quarter beats
+    And each beat should contain three eighth-note slots
 
-  Scenario: Reject 6/8 compound meter without a pulse
+  Scenario: Reject 6/8 compound meter without a beat
     Given a file named "song.strum" containing:
       """
       tempo: 72
@@ -186,7 +186,7 @@ Feature: Use subdivision and count metadata for strumming patterns
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
-    And the error should mention "missing pulse"
+    And the error should mention "missing beat"
 
   Scenario: Reject a pattern with too many slots for eighth-note subdivision
     Given a file named "song.strum" containing:

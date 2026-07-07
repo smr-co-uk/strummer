@@ -1,0 +1,129 @@
+name: Tagged Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate-tag:
+    name: Validate semver tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate tag name
+        run: |
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Tag '${GITHUB_REF_NAME}' is not a semver tag like v1.2.3"
+            exit 1
+          fi
+
+  build:
+    name: Build release artifact (${{ matrix.name }})
+    needs: validate-tag
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            binary_name: strum2midi
+            artifact_name: strum2midi-linux-x86_64
+          - name: macos-x86_64
+            os: macos-15-intel
+            binary_name: strum2midi
+            artifact_name: strum2midi-macos-x86_64
+          - name: macos-arm64
+            os: macos-latest
+            binary_name: strum2midi
+            artifact_name: strum2midi-macos-arm64
+          - name: windows-x86_64
+            os: windows-latest
+            binary_name: strum2midi.exe
+            artifact_name: strum2midi-windows-x86_64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Build library
+        run: cargo build --lib --release
+
+      - name: Build CLI binary
+        run: cargo build --bin strum2midi --release
+
+      - name: Stage release binary
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp "target/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}"
+
+      - name: Stage release binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target/release/${{ matrix.binary_name }}" "dist/${{ matrix.artifact_name }}"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: release-artifacts
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          files=()
+          while IFS= read -r -d '' file; do
+            files+=("$file")
+          done < <(find release-artifacts -type f -print0)
+
+          if [[ "${#files[@]}" -eq 0 ]]; then
+            echo "No release artifacts found"
+            exit 1
+          fi
+
+          gh release create "${TAG}" "${files[@]}" \
+            --verify-tag \
+            --title "${TAG}" \
+            --notes "Release ${TAG}"

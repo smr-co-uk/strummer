@@ -1,0 +1,1 @@
+ cargo run -- hotel_california.strum hotel_california2.mid

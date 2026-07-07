@@ -25,8 +25,8 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
         .time_signature
         .expect("validated song has time");
     let slot_ticks = timing::slot_ticks(song)?;
-    let slots_per_pulse = u32::try_from(timing::slots_per_pulse(
-        song.metadata.pulse.unwrap_or(crate::model::Pulse::Quarter),
+    let slots_per_beat = u32::try_from(timing::slots_per_beat(
+        song.metadata.beat.unwrap_or(crate::model::Beat::Quarter),
         song.metadata.subdivision.unwrap_or(16),
     )?)
     .unwrap_or(u32::MAX);
@@ -39,7 +39,7 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
         for (beat_index, beat) in bar.beats.iter().enumerate() {
             let chord_notes = chord::notes_for_chord(&beat.chord).expect("validated chord exists");
             for (slot_index, symbol) in beat.slots.iter().enumerate() {
-                let slot_offset = (u32::try_from(beat_index).unwrap_or(u32::MAX) * slots_per_pulse
+                let slot_offset = (u32::try_from(beat_index).unwrap_or(u32::MAX) * slots_per_beat
                     + u32::try_from(slot_index).unwrap_or(u32::MAX))
                     * slot_ticks;
                 let tick = bar_start + slot_offset;

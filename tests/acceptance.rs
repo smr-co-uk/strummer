@@ -148,9 +148,9 @@ fn supports_three_four_eighth_note_subdivision() {
 }
 
 #[test]
-fn supports_six_eight_dotted_quarter_pulse() {
+fn supports_six_eight_dotted_quarter_beat() {
     let input =
-        "tempo: 72\ntime: 6/8\npulse: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n";
+        "tempo: 72\ntime: 6/8\nbeat: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n";
     let (output, root) = run_case("six-eight-compound", input, &[]);
 
     assert!(output.status.success(), "{}", stderr(&output));
@@ -192,12 +192,12 @@ fn rejects_unsupported_count_style() {
 }
 
 #[test]
-fn rejects_six_eight_without_pulse() {
+fn rejects_six_eight_without_beat() {
     let input = "tempo: 72\ntime: 6/8\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n";
-    let (output, _root) = run_case("six-eight-missing-pulse", input, &[]);
+    let (output, _root) = run_case("six-eight-missing-beat", input, &[]);
 
     assert!(!output.status.success());
-    assert!(stderr(&output).contains("missing pulse"));
+    assert!(stderr(&output).contains("missing beat"));
 }
 
 #[test]

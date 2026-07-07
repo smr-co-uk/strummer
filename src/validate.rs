@@ -1,7 +1,7 @@
 use crate::{
     chord,
     error::{AppError, Result},
-    model::{CountStyle, Pulse, Song, TimeSignature},
+    model::{Beat, CountStyle, Song, TimeSignature},
     timing,
 };
 
@@ -16,11 +16,11 @@ pub fn validate(song: &Song) -> Result<()> {
         return Err(AppError::Validation("empty input file".to_string()));
     }
 
-    let pulse = resolved_pulse(song, time_signature)?;
+    let beat = resolved_beat(song, time_signature)?;
     let subdivision = resolved_subdivision(song)?;
-    validate_count(song.metadata.count, pulse, subdivision)?;
-    let expected_beats = expected_beat_patterns(time_signature, pulse)?;
-    let expected_slots = timing::slots_per_pulse(pulse, subdivision)?;
+    validate_count(song.metadata.count, beat, subdivision)?;
+    let expected_beats = expected_beat_patterns(time_signature, beat)?;
+    let expected_slots = timing::slots_per_beat(beat, subdivision)?;
     for bar in &song.bars {
         if bar.beats.len() != expected_beats {
             return Err(AppError::Validation(format!(
@@ -49,16 +49,16 @@ pub fn validate(song: &Song) -> Result<()> {
     Ok(())
 }
 
-fn resolved_pulse(song: &Song, time_signature: TimeSignature) -> Result<Pulse> {
-    if let Some(pulse) = song.metadata.pulse {
-        return Ok(pulse);
+fn resolved_beat(song: &Song, time_signature: TimeSignature) -> Result<Beat> {
+    if let Some(beat) = song.metadata.beat {
+        return Ok(beat);
     }
 
     if time_signature.denominator == 8 {
-        return Err(AppError::Validation("missing pulse".to_string()));
+        return Err(AppError::Validation("missing beat".to_string()));
     }
 
-    Ok(Pulse::Quarter)
+    Ok(Beat::Quarter)
 }
 
 fn resolved_subdivision(song: &Song) -> Result<u8> {
@@ -71,36 +71,36 @@ fn resolved_subdivision(song: &Song) -> Result<u8> {
     }
 }
 
-fn validate_count(count: Option<CountStyle>, pulse: Pulse, subdivision: u8) -> Result<()> {
+fn validate_count(count: Option<CountStyle>, beat: Beat, subdivision: u8) -> Result<()> {
     let Some(count) = count else {
         return Ok(());
     };
 
     let valid = matches!(
-        (count, pulse, subdivision),
-        (CountStyle::OneAnd, Pulse::Quarter, 8)
-            | (CountStyle::OneAndA, Pulse::DottedQuarter, 8)
-            | (CountStyle::OneEAndA, Pulse::Quarter, 16)
-            | (CountStyle::OneAAndA, Pulse::Quarter, 16)
+        (count, beat, subdivision),
+        (CountStyle::OneAnd, Beat::Quarter, 8)
+            | (CountStyle::OneAndA, Beat::DottedQuarter, 8)
+            | (CountStyle::OneEAndA, Beat::Quarter, 16)
+            | (CountStyle::OneAAndA, Beat::Quarter, 16)
     );
 
     if valid {
         Ok(())
     } else {
         Err(AppError::Validation(
-            "unsupported count for pulse and subdivision".to_string(),
+            "unsupported count for beat and subdivision".to_string(),
         ))
     }
 }
 
-fn expected_beat_patterns(time_signature: TimeSignature, pulse: Pulse) -> Result<usize> {
-    match (pulse, time_signature.numerator, time_signature.denominator) {
-        (Pulse::Quarter, numerator, 4) if numerator > 0 => Ok(usize::from(numerator)),
-        (Pulse::DottedQuarter, numerator, 8) if numerator > 0 && numerator % 3 == 0 => {
+fn expected_beat_patterns(time_signature: TimeSignature, beat: Beat) -> Result<usize> {
+    match (beat, time_signature.numerator, time_signature.denominator) {
+        (Beat::Quarter, numerator, 4) if numerator > 0 => Ok(usize::from(numerator)),
+        (Beat::DottedQuarter, numerator, 8) if numerator > 0 && numerator % 3 == 0 => {
             Ok(usize::from(numerator / 3))
         }
         _ => Err(AppError::Validation(format!(
-            "unsupported time signature {}/{} with selected pulse",
+            "unsupported time signature {}/{} with selected beat",
             time_signature.numerator, time_signature.denominator
         ))),
     }
@@ -113,7 +113,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn accepts_three_four_with_three_quarter_pulses() {
+    fn accepts_three_four_with_three_quarter_beats() {
         let song =
             parser::parse("tempo: 92\ntime: 3/4\nsubdivision: 8\ncount: 1&\n\nC\nDU DU DU\n")
                 .unwrap();
@@ -122,9 +122,9 @@ mod tests {
     }
 
     #[test]
-    fn accepts_six_eight_with_two_dotted_quarter_pulses() {
+    fn accepts_six_eight_with_two_dotted_quarter_beats() {
         let song = parser::parse(
-            "tempo: 72\ntime: 6/8\npulse: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n",
+            "tempo: 72\ntime: 6/8\nbeat: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n",
         )
         .unwrap();
 
@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_six_eight_without_pulse() {
+    fn rejects_six_eight_without_beat() {
         let song =
             parser::parse("tempo: 72\ntime: 6/8\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n")
                 .unwrap();
@@ -141,7 +141,7 @@ mod tests {
             validate(&song)
                 .unwrap_err()
                 .to_string()
-                .contains("missing pulse")
+                .contains("missing beat")
         );
     }
 }

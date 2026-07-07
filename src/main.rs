@@ -1,17 +1,14 @@
-mod chord;
 mod cli;
-mod error;
-mod midi_writer;
-mod model;
-mod parser;
-mod timing;
-mod validate;
 
 use std::fs;
 
 use cli::Cli;
-use error::{AppError, Result};
-use midi_writer::MidiOptions;
+use strum2midi::{
+    error::{AppError, Result},
+    midi_writer,
+    midi_writer::MidiOptions,
+    parser, validate,
+};
 
 fn main() {
     if let Err(err) = run() {

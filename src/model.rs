@@ -8,7 +8,7 @@ pub struct Song {
 pub struct Metadata {
     pub tempo: Option<u16>,
     pub time_signature: Option<TimeSignature>,
-    pub pulse: Option<Pulse>,
+    pub beat: Option<Beat>,
     pub subdivision: Option<u8>,
     pub count: Option<CountStyle>,
 }
@@ -20,7 +20,7 @@ pub struct TimeSignature {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Pulse {
+pub enum Beat {
     Quarter,
     DottedQuarter,
 }

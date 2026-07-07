@@ -66,27 +66,27 @@ instrument: acoustic_guitar
 Optional rhythm metadata:
 
 ```text
-pulse: quarter
+beat: quarter
 subdivision: 16
 count: 1e&a
 ```
 
-`pulse` controls how the time signature is grouped into beat patterns.
+`beat` controls how the time signature is grouped into beat patterns.
 Supported values:
 
-| Value | Meaning |
-|---|---|
-| `quarter` | One beat pattern per quarter-note beat |
-| `dotted-quarter` | One beat pattern per dotted-quarter pulse |
+| Value | Meaning                                                        |
+|---|----------------------------------------------------------------|
+| `quarter` | One beat pattern per quarter-note beat                         |
+| `dotted-quarter` | One beat pattern per dotted-quarter beat, needed for 6/8 time  |
 
-If `pulse` is omitted, the program shall use `quarter` for simple meters such as `3/4` and `4/4`.
+If `beat` is omitted, the program shall use `quarter` for simple meters such as `3/4` and `4/4`.
 
-For compound meters such as `6/8`, `pulse: dotted-quarter` shall group the bar into two beat patterns. This supports common compound counting such as `1&a2&a`.
+For compound meters such as `6/8`, `beat: dotted-quarter` shall group the bar into two beat patterns. This supports common compound counting such as `1&a2&a`.
 
-`subdivision` controls how many equal slots each pulse contains.
+`subdivision` controls how many equal slots each beat contains.
 Supported values:
 
-| Value | Slots per quarter pulse | Slots per dotted-quarter pulse | Example count |
+| Value | Slots per quarter beat | Slots per dotted-quarter beat | Example count |
 |---|---:|---:|---|
 | `8` | 2 | 3 | `1&` or `1&a` |
 | `16` | 4 | 6 | `1e&a` |
@@ -152,7 +152,7 @@ The first bar in a file cannot use `...` because there is no previous bar patter
 
 ### 4.3 Beat Pattern
 
-Each beat pattern contains one slot per subdivision within a pulse.
+Each beat pattern contains one slot per subdivision within a beat.
 
 With the default `subdivision: 16`, each beat pattern contains four slots.
 
@@ -171,9 +171,9 @@ This means:
 | 3 | Upstroke |
 | 4 | Rest |
 
-For 4/4 time with `pulse: quarter`, a bar normally has four beat patterns.
+For 4/4 time with `beat: quarter`, a bar normally has four beat patterns.
 
-With `pulse: quarter` and `subdivision: 8`, each beat pattern contains two slots.
+With `beat: quarter` and `subdivision: 8`, each beat pattern contains two slots.
 
 Example:
 
@@ -197,9 +197,9 @@ DU DU DU DU
 
 This represents `1&2&3&4&`.
 
-With `subdivision: 16`, a full bar may use the standard `1e&a2e&a3e&a4e&a` count or the alternate `1a&a2a&a3a&a4a&a` count style. Both count styles use four equal slots per quarter pulse and produce the same timing.
+With `subdivision: 16`, a full bar may use the standard `1e&a2e&a3e&a4e&a` count or the alternate `1a&a2a&a3a&a4a&a` count style. Both count styles use four equal slots per quarter beat and produce the same timing.
 
-For 6/8 time with `pulse: dotted-quarter` and `subdivision: 8`, a bar has two beat patterns and each beat pattern contains three slots.
+For 6/8 time with `beat: dotted-quarter` and `subdivision: 8`, a bar has two beat patterns and each beat pattern contains three slots.
 
 Example:
 
@@ -278,20 +278,20 @@ The tool shall calculate MIDI timing from:
 
 - Tempo
 - Time signature
-- Pulse grouping
+- Beat grouping
 - Number of beat patterns per bar
 - Number of slots per beat pattern
 
 For Version 1:
 
-- The default pulse is `quarter` for simple meters.
+- The default beat is `quarter` for simple meters.
 - The default subdivision is `16`.
-- With `pulse: quarter` and `subdivision: 16`, each beat pattern has four slots.
-- With `pulse: quarter` and `subdivision: 8`, each beat pattern has two slots.
-- With `pulse: dotted-quarter` and `subdivision: 8`, each beat pattern has three slots.
-- In 4/4 time with `pulse: quarter`, each bar has four beat patterns.
-- In 3/4 time with `pulse: quarter`, each bar has three beat patterns.
-- In 6/8 time with `pulse: dotted-quarter`, each bar has two beat patterns.
+- With `beat: quarter` and `subdivision: 16`, each beat pattern has four slots.
+- With `beat: quarter` and `subdivision: 8`, each beat pattern has two slots.
+- With `beat: dotted-quarter` and `subdivision: 8`, each beat pattern has three slots.
+- In 4/4 time with `beat: quarter`, each bar has four beat patterns.
+- In 3/4 time with `beat: quarter`, each bar has three beat patterns.
+- In 6/8 time with `beat: dotted-quarter`, each bar has two beat patterns.
 - Therefore a 4/4 bar has eight slots at `subdivision: 8` and sixteen slots at `subdivision: 16`.
 
 ## 8. Command Line Interface
@@ -325,8 +325,8 @@ Validation should detect:
 - Wrong number of beat patterns for the time signature
 - Wrong number of slots for the selected subdivision
 - Repeat marker without a previous bar
-- Missing pulse for compound meters that require explicit grouping
-- Unsupported pulse
+- Missing beat for compound meters that require explicit grouping
+- Unsupported beat
 - Unsupported subdivision
 - Unsupported count style
 - Empty input file

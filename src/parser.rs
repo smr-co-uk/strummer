@@ -1,6 +1,6 @@
 use crate::{
     error::{AppError, Result},
-    model::{Bar, BeatPattern, CountStyle, Metadata, Pulse, Song, StrumSymbol, TimeSignature},
+    model::{Bar, Beat, BeatPattern, CountStyle, Metadata, Song, StrumSymbol, TimeSignature},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,12 +70,12 @@ pub fn parse(input: &str) -> Result<Song> {
 
 fn looks_like_metadata(line: &str) -> bool {
     let key = line.split(':').next().unwrap_or_default().trim();
-    matches!(key, "tempo" | "time" | "pulse" | "subdivision" | "count")
+    matches!(key, "tempo" | "time" | "beat" | "subdivision" | "count")
 }
 
 fn looks_like_malformed_metadata(line: &str) -> bool {
     let key = line.split_whitespace().next().unwrap_or_default();
-    matches!(key, "tempo" | "time" | "pulse" | "subdivision" | "count") && !line.contains(':')
+    matches!(key, "tempo" | "time" | "beat" | "subdivision" | "count") && !line.contains(':')
 }
 
 fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) -> Result<()> {
@@ -113,13 +113,13 @@ fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) 
                 })?,
             });
         }
-        "pulse" => {
-            metadata.pulse = Some(match value {
-                "quarter" => Pulse::Quarter,
-                "dotted-quarter" => Pulse::DottedQuarter,
+        "beat" => {
+            metadata.beat = Some(match value {
+                "quarter" => Beat::Quarter,
+                "dotted-quarter" => Beat::DottedQuarter,
                 _ => {
                     return Err(AppError::Validation(format!(
-                        "Line {line_number}: unsupported pulse '{value}'"
+                        "Line {line_number}: unsupported beat '{value}'"
                     )));
                 }
             });
@@ -334,7 +334,7 @@ mod tests {
     #[test]
     fn parses_metadata_and_chart_pair() {
         let song =
-            parse("tempo: 92\ntime: 4/4\npulse: quarter\nsubdivision: 8\ncount: 1&\n\nC            Am\nDU DU DU DU | ...\n")
+            parse("tempo: 92\ntime: 4/4\nbeat: quarter\nsubdivision: 8\ncount: 1&\n\nC            Am\nDU DU DU DU | ...\n")
                 .unwrap();
 
         assert_eq!(song.metadata.tempo, Some(92));
@@ -345,7 +345,7 @@ mod tests {
                 denominator: 4
             })
         );
-        assert_eq!(song.metadata.pulse, Some(Pulse::Quarter));
+        assert_eq!(song.metadata.beat, Some(Beat::Quarter));
         assert_eq!(song.metadata.subdivision, Some(8));
         assert_eq!(song.metadata.count, Some(CountStyle::OneAnd));
         assert_eq!(song.bars.len(), 2);

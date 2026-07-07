@@ -1,17 +1,14 @@
 use crate::{
     error::{AppError, Result},
-    model::{Pulse, Song, TimeSignature},
+    model::{Beat, Song, TimeSignature},
 };
 
 pub const PPQ: u16 = 480;
 
 pub fn slot_ticks(song: &Song) -> Result<u32> {
-    let pulse = resolved_pulse(song);
+    let beat = resolved_beat(song);
     let subdivision = resolved_subdivision(song);
-    Ok(
-        pulse_ticks(pulse)
-            / u32::try_from(slots_per_pulse(pulse, subdivision)?).unwrap_or(u32::MAX),
-    )
+    Ok(beat_ticks(beat) / u32::try_from(slots_per_beat(beat, subdivision)?).unwrap_or(u32::MAX))
 }
 
 pub fn bar_ticks(song: &Song) -> Result<u32> {
@@ -19,16 +16,16 @@ pub fn bar_ticks(song: &Song) -> Result<u32> {
         .metadata
         .time_signature
         .expect("validated song has time");
-    Ok(pulse_ticks(resolved_pulse(song))
-        * u32::try_from(pulses_per_bar(time_signature, resolved_pulse(song))?).unwrap_or(u32::MAX))
+    Ok(beat_ticks(resolved_beat(song))
+        * u32::try_from(beats_per_bar(time_signature, resolved_beat(song))?).unwrap_or(u32::MAX))
 }
 
-pub fn slots_per_pulse(pulse: Pulse, subdivision: u8) -> Result<usize> {
-    match (pulse, subdivision) {
-        (Pulse::Quarter, 8) => Ok(2),
-        (Pulse::Quarter, 16) => Ok(4),
-        (Pulse::DottedQuarter, 8) => Ok(3),
-        (Pulse::DottedQuarter, 16) => Ok(6),
+pub fn slots_per_beat(beat: Beat, subdivision: u8) -> Result<usize> {
+    match (beat, subdivision) {
+        (Beat::Quarter, 8) => Ok(2),
+        (Beat::Quarter, 16) => Ok(4),
+        (Beat::DottedQuarter, 8) => Ok(3),
+        (Beat::DottedQuarter, 16) => Ok(6),
         (_, other) => Err(AppError::Validation(format!(
             "unsupported subdivision '{other}'"
         ))),
@@ -40,29 +37,27 @@ pub fn ms_to_ticks(ms: u16, tempo_bpm: u16) -> u32 {
     u32::try_from(ticks.max(1)).unwrap_or(u32::MAX)
 }
 
-fn resolved_pulse(song: &Song) -> Pulse {
-    song.metadata.pulse.unwrap_or(Pulse::Quarter)
+fn resolved_beat(song: &Song) -> Beat {
+    song.metadata.beat.unwrap_or(Beat::Quarter)
 }
 
 fn resolved_subdivision(song: &Song) -> u8 {
     song.metadata.subdivision.unwrap_or(16)
 }
 
-fn pulse_ticks(pulse: Pulse) -> u32 {
-    match pulse {
-        Pulse::Quarter => u32::from(PPQ),
-        Pulse::DottedQuarter => u32::from(PPQ) * 3 / 2,
+fn beat_ticks(beat: Beat) -> u32 {
+    match beat {
+        Beat::Quarter => u32::from(PPQ),
+        Beat::DottedQuarter => u32::from(PPQ) * 3 / 2,
     }
 }
 
-fn pulses_per_bar(time_signature: TimeSignature, pulse: Pulse) -> Result<usize> {
-    match (pulse, time_signature.numerator, time_signature.denominator) {
-        (Pulse::Quarter, numerator, 4) => Ok(usize::from(numerator)),
-        (Pulse::DottedQuarter, numerator, 8) if numerator % 3 == 0 => {
-            Ok(usize::from(numerator / 3))
-        }
+fn beats_per_bar(time_signature: TimeSignature, beat: Beat) -> Result<usize> {
+    match (beat, time_signature.numerator, time_signature.denominator) {
+        (Beat::Quarter, numerator, 4) => Ok(usize::from(numerator)),
+        (Beat::DottedQuarter, numerator, 8) if numerator % 3 == 0 => Ok(usize::from(numerator / 3)),
         _ => Err(AppError::Validation(format!(
-            "unsupported time signature {}/{} with selected pulse",
+            "unsupported time signature {}/{} with selected beat",
             time_signature.numerator, time_signature.denominator
         ))),
     }
@@ -82,7 +77,7 @@ mod tests {
                     numerator: 4,
                     denominator: 4,
                 }),
-                pulse: None,
+                beat: None,
                 subdivision: None,
                 count: None,
             },
@@ -101,7 +96,7 @@ mod tests {
                     numerator: 6,
                     denominator: 8,
                 }),
-                pulse: Some(Pulse::DottedQuarter),
+                beat: Some(Beat::DottedQuarter),
                 subdivision: Some(8),
                 count: None,
             },
