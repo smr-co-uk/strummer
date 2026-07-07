@@ -1,7 +1,15 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Song {
     pub metadata: Metadata,
+    pub parts: Vec<Part>,
     pub bars: Vec<Bar>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Part {
+    pub line: usize,
+    pub name: String,
+    pub bar_index: usize,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

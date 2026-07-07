@@ -82,6 +82,7 @@ mod tests {
                 count: None,
                 instrument: None,
             },
+            parts: Vec::new(),
             bars: Vec::new(),
         };
 
@@ -102,6 +103,7 @@ mod tests {
                 count: None,
                 instrument: None,
             },
+            parts: Vec::new(),
             bars: Vec::new(),
         };
 

@@ -1,7 +1,8 @@
 use crate::{
     error::{AppError, Result},
     model::{
-        Bar, Beat, BeatPattern, CountStyle, Instrument, Metadata, Song, StrumSymbol, TimeSignature,
+        Bar, Beat, BeatPattern, CountStyle, Instrument, Metadata, Part, Song, StrumSymbol,
+        TimeSignature,
     },
 };
 
@@ -29,6 +30,7 @@ pub fn parse(input: &str) -> Result<Song> {
     }
 
     let mut metadata = Metadata::default();
+    let mut parts = Vec::new();
     let mut bars = Vec::new();
     let mut chart_lines = Vec::new();
 
@@ -39,9 +41,14 @@ pub fn parse(input: &str) -> Result<Song> {
             continue;
         }
 
-        if bars.is_empty() && chart_lines.is_empty() && looks_like_metadata(line) {
+        if is_part_metadata(line) {
+            flush_chart_lines(&mut chart_lines, &mut bars)?;
+            parse_part_line(line, line_number, bars.len(), &mut parts)?;
+        } else if bars.is_empty() && chart_lines.is_empty() && looks_like_metadata(line) {
             parse_metadata_line(line, line_number, &mut metadata)?;
-        } else if bars.is_empty() && chart_lines.is_empty() && looks_like_malformed_metadata(line) {
+        } else if (bars.is_empty() && chart_lines.is_empty() && looks_like_malformed_metadata(line))
+            || looks_like_malformed_part(line)
+        {
             return Err(AppError::Parse(format!(
                 "Line {line_number}: malformed metadata line"
             )));
@@ -50,7 +57,21 @@ pub fn parse(input: &str) -> Result<Song> {
         }
     }
 
-    if chart_lines.len() % 2 != 0 {
+    flush_chart_lines(&mut chart_lines, &mut bars)?;
+
+    Ok(Song {
+        metadata,
+        parts,
+        bars,
+    })
+}
+
+fn flush_chart_lines(chart_lines: &mut Vec<(usize, String)>, bars: &mut Vec<Bar>) -> Result<()> {
+    if chart_lines.is_empty() {
+        return Ok(());
+    }
+
+    if !chart_lines.len().is_multiple_of(2) {
         let (line_number, _) = chart_lines.last().expect("odd chart line count has last");
         return Err(AppError::Parse(format!(
             "Line {line_number}: expected strum pattern line after chord line"
@@ -63,11 +84,12 @@ pub fn parse(input: &str) -> Result<Song> {
             pair[0].1.as_str(),
             pair[1].0,
             pair[1].1.as_str(),
-            &mut bars,
+            bars,
         )?;
     }
 
-    Ok(Song { metadata, bars })
+    chart_lines.clear();
+    Ok(())
 }
 
 fn looks_like_metadata(line: &str) -> bool {
@@ -84,6 +106,41 @@ fn looks_like_malformed_metadata(line: &str) -> bool {
         key,
         "tempo" | "time" | "beat" | "subdivision" | "count" | "instrument"
     ) && !line.contains(':')
+}
+
+fn is_part_metadata(line: &str) -> bool {
+    line.split_once(':')
+        .is_some_and(|(key, _)| key.trim() == "part")
+}
+
+fn looks_like_malformed_part(line: &str) -> bool {
+    line.split_whitespace().next().unwrap_or_default() == "part" && !line.contains(':')
+}
+
+fn parse_part_line(
+    line: &str,
+    line_number: usize,
+    bar_index: usize,
+    parts: &mut Vec<Part>,
+) -> Result<()> {
+    let Some((_, value)) = line.split_once(':') else {
+        return Err(AppError::Parse(format!(
+            "Line {line_number}: malformed metadata line"
+        )));
+    };
+    let name = value.trim();
+    if name.is_empty() {
+        return Err(AppError::Parse(format!(
+            "Line {line_number}: malformed metadata line"
+        )));
+    }
+
+    parts.push(Part {
+        line: line_number,
+        name: name.to_string(),
+        bar_index,
+    });
+    Ok(())
 }
 
 fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) -> Result<()> {
@@ -369,6 +426,7 @@ mod tests {
         assert_eq!(song.metadata.subdivision, Some(8));
         assert_eq!(song.metadata.count, Some(CountStyle::OneAnd));
         assert_eq!(song.metadata.instrument, None);
+        assert!(song.parts.is_empty());
         assert_eq!(song.bars.len(), 2);
         assert_eq!(song.bars[0].beats[0].chord, "C");
         assert_eq!(song.bars[1].beats[0].chord, "Am");
@@ -382,6 +440,29 @@ mod tests {
         assert_eq!(song.bars.len(), 1);
         assert_eq!(song.bars[0].beats[0].chord, "C");
         assert_eq!(song.bars[0].beats[2].chord, "G");
+    }
+
+    #[test]
+    fn parses_part_markers_between_chart_sections() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- D-U- --U- D-U-\npart: chorus\nG\nD--- D-U- --U- D-U-\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.parts.len(), 2);
+        assert_eq!(song.parts[0].name, "verse");
+        assert_eq!(song.parts[0].line, 4);
+        assert_eq!(song.parts[0].bar_index, 0);
+        assert_eq!(song.parts[1].name, "chorus");
+        assert_eq!(song.parts[1].line, 7);
+        assert_eq!(song.parts[1].bar_index, 1);
+        assert_eq!(song.bars.len(), 2);
+    }
+
+    #[test]
+    fn rejects_empty_part_name() {
+        let err = parse("tempo: 92\ntime: 4/4\npart:\nC\nD--- D-U- --U- D-U-\n").unwrap_err();
+        assert!(err.to_string().contains("malformed metadata line"));
     }
 
     #[test]

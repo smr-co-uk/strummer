@@ -62,6 +62,16 @@ fn supports_instrument_metadata() {
 }
 
 #[test]
+fn supports_part_markers_between_chart_sections() {
+    let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- D-U- --U- D-U-\npart: chorus\nG\nD--- D-U- --U- D-U-\n";
+    let (output, root) = run_case("part-markers", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 36);
+}
+
+#[test]
 fn rejects_unsupported_instrument_metadata() {
     let input = "tempo: 92\ntime: 4/4\ninstrument: banjo\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("bad-instrument", input, &[]);
@@ -99,6 +109,17 @@ fn rejects_unknown_chord_with_line_number() {
     let stderr = stderr(&output).to_lowercase();
     assert!(stderr.contains("unknown chord"));
     assert!(stderr.contains("line 4"));
+}
+
+#[test]
+fn supports_sharp_and_flat_chords() {
+    let input =
+        "tempo: 92\ntime: 4/4\n\nC#      Bbm     Eb7     A#7\nD---    D---    D---    D---\n";
+    let (output, root) = run_case("sharp-flat-chords", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 14);
 }
 
 #[test]

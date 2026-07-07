@@ -12,6 +12,7 @@ Version 1 supports:
 
 - Plain text input files
 - Tempo and time signature metadata
+- Part markers for readable song structure
 - Chord names on a chord line above the strum pattern
 - Strumming patterns using compact symbols
 - MIDI output containing chord strums
@@ -77,6 +78,27 @@ Supported values:
 | `acoustic_guitar` | 25 |
 | `electric_guitar_clean` | 27 |
 | `nylon_guitar` | 24 |
+
+Optional song structure metadata:
+
+```text
+part: verse
+```
+
+`part` must be followed by a non-empty part name.
+
+Part markers may appear before or between chord/pattern line pairs:
+
+```text
+part: verse
+C
+D--- D-U- --U- D-U-
+part: chorus
+G
+D--- D-U- --U- D-U-
+```
+
+For Version 1, `part` is a structural placeholder for readability and library consumers. It shall not change MIDI timing, notes, instruments, or output events.
 
 Optional rhythm metadata:
 
@@ -249,11 +271,19 @@ Future symbols may include:
 
 The program shall map common chord names to MIDI notes.
 
-Minimum supported chords:
+Minimum supported chord roots:
 
-- Major: `C`, `D`, `E`, `F`, `G`, `A`, `B`
-- Minor: `Cm`, `Dm`, `Em`, `Fm`, `Gm`, `Am`, `Bm`
-- Seventh: `C7`, `D7`, `E7`, `F7`, `G7`, `A7`, `B7`
+- Natural roots: `C`, `D`, `E`, `F`, `G`, `A`, `B`
+- Sharp roots: `C#`, `D#`, `E#`, `F#`, `G#`, `A#`, `B#`
+- Flat roots: `Cb`, `Db`, `Eb`, `Fb`, `Gb`, `Ab`, `Bb`
+
+Supported qualities for each root:
+
+- Major: no suffix, for example `C`, `F#`, `Bb`
+- Minor: `m`, for example `Cm`, `F#m`, `Bbm`
+- Seventh: `7`, for example `C7`, `F#7`, `Bb7`
+
+Enharmonic spellings that refer to the same pitch shall produce the same notes, for example `C#` and `Db`.
 
 The implementation may use simple closed-position voicings for Version 1.
 
@@ -355,6 +385,7 @@ Validation should detect:
 - Unsupported subdivision
 - Unsupported count style
 - Unsupported instrument
+- Empty part name
 - Empty input file
 - Malformed metadata line
 
@@ -416,3 +447,9 @@ The implementation is complete when:
 - Muted strums produce short percussive events
 - Invalid input produces useful line-based errors
 - Automated tests cover parsing, validation, chord mapping, timing, and MIDI event generation
+
+## References
+For information only and not part of the requirements:
+* https://miditoolbox.com/analyzer
+* https://www.midi.org/specifications/item/table-1-summary-of-midi-message
+* https://streamdevprojects.com/midi

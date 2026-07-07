@@ -1,6 +1,43 @@
-tempo: 92
+tempo: 140
 time: 4/4
 subdivision: 8
 
-Bm                          F7
+part: intro
+Bm                          F#7
+D- -- -- -- | D- -- -- -- | D- -- -- -- | D- -- -- --
+A                           E
+D- -- -- -- | D- -- -- -- | D- -- -- -- | D- -- -- --
+G                           D
+D- -- -- -- | D- -- -- -- | D- -- -- -- | D- -- -- --
+Em                          F#7
+D- -- -- -- | D- -- -- -- | D- -- -- -- | D- -- -- --
+
+part: verse
+Bm                          F#7
 D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+A                           E
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+G                           D
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+Em                          F#7
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+
+part: verse
+
+part: chorus
+G                           D
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+F#7                         Bm
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+G                           D
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+Em                          F#7
+D- DU D- DU | DU D- D- DU | D- DU D- DU | DU D- D- DU
+
+part: verse
+
+part: verse
+
+part: chorus
+
+part: verse

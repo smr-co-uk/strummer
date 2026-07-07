@@ -73,6 +73,24 @@ Feature: Convert guitar strumming text files to MIDI
     Then the command should succeed
     And the MIDI file should contain a program change event for clean electric guitar
 
+  Scenario: Use part markers for song structure
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      part: verse
+      C
+      D--- D-U- --U- D-U-
+      part: chorus
+      G
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And a file named "song.mid" should exist
+    And the part markers should not change the MIDI notes
+
   Scenario: Downstroke plays chord notes from low to high
     Given a file named "song.strum" containing:
       """
@@ -96,6 +114,19 @@ Feature: Convert guitar strumming text files to MIDI
       """
     When I run "strum2midi song.strum song.mid"
     Then the first strum should play the C chord notes from high to low
+
+  Scenario: Convert sharp and flat chord names
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      C#      Bbm     Eb7     A#7
+      D---    D---    D---    D---
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain chord note events for sharp and flat chords
 
   Scenario: Rests create no MIDI note events
     Given a file named "song.strum" containing:
