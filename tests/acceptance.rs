@@ -114,13 +114,14 @@ fn rests_create_no_note_events() {
 }
 
 #[test]
-fn muted_strums_create_percussive_events() {
+fn muted_strums_create_short_low_velocity_chord_events() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nX--- ---- ---- ----\n";
     let (output, root) = run_case("muted", input, &[]);
 
     assert!(output.status.success(), "{}", stderr(&output));
     let midi = fs::read(root.join("song.mid")).unwrap();
-    assert!(midi.windows(3).any(|window| window == [0x99, 37, 35]));
+    assert!(midi.windows(3).any(|window| window == [0x90, 48, 25]));
+    assert!(!midi.iter().any(|byte| *byte == 0x99 || *byte == 0x89));
 }
 
 #[test]

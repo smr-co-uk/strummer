@@ -82,7 +82,9 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
                         note_duration,
                         spread_ticks,
                     )?,
-                    StrumSymbol::Muted => push_muted(&mut events, tick, note_duration)?,
+                    StrumSymbol::Muted => {
+                        push_muted(&mut events, tick, &chord_notes, note_duration)?
+                    }
                     StrumSymbol::Rest => {}
                 }
             }
@@ -161,18 +163,21 @@ fn push_strum(
     Ok(())
 }
 
-fn push_muted(events: &mut Vec<MidiEvent>, tick: u32, duration: u32) -> Result<()> {
-    let note = 37;
-    events.push(MidiEvent {
-        tick,
-        order: 1,
-        bytes: [0x99, note, 35],
-    });
-    events.push(MidiEvent {
-        tick: checked_add(tick, duration.min(30))?,
-        order: 0,
-        bytes: [0x89, note, 0],
-    });
+fn push_muted(events: &mut Vec<MidiEvent>, tick: u32, notes: &[u8], duration: u32) -> Result<()> {
+    let muted_velocity = 25;
+    let muted_duration = duration.min(30);
+    for note in notes {
+        events.push(MidiEvent {
+            tick,
+            order: 1,
+            bytes: [0x90, *note, muted_velocity],
+        });
+        events.push(MidiEvent {
+            tick: checked_add(tick, muted_duration)?,
+            order: 0,
+            bytes: [0x80, *note, 0],
+        });
+    }
     Ok(())
 }
 

@@ -173,7 +173,7 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid"
     Then the MIDI file should contain no chord note events
 
-  Scenario: Muted strums create short percussive events
+  Scenario: Muted strums create short low-velocity chord events
     Given a file named "song.strum" containing:
       """
       tempo: 92
@@ -183,7 +183,7 @@ Feature: Convert guitar strumming text files to MIDI
       X--- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
-    Then the MIDI file should contain a short percussive event at the first slot
+    Then the MIDI file should contain short low-velocity C chord note events at the first slot
 
   Scenario: Reject an unknown chord
     Given a file named "song.strum" containing:

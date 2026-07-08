@@ -323,9 +323,9 @@ strum_spread_ms: 20
 
 ### 6.5 Muted Strum
 
-A muted strum shall produce a short percussive MIDI event.
+A muted strum shall produce a short low-velocity MIDI event using the current chord notes.
 
-The implementation may use a short low-velocity chord, a percussion note, or another simple MIDI representation.
+Muted strums shall use the same guitar MIDI channel as normal chord strums.
 
 ### 6.6 Rests
 
@@ -458,7 +458,7 @@ The implementation is complete when:
 - Downstrokes play low-to-high
 - Upstrokes play high-to-low
 - Rests produce silence
-- Muted strums produce short percussive events
+- Muted strums produce short low-velocity chord events
 - Invalid input produces useful line-based errors
 - Automated tests cover parsing, validation, chord mapping, timing, and MIDI event generation
 
