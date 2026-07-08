@@ -28,6 +28,9 @@ fn run() -> Result<()> {
     })?;
 
     let mut song = parser::parse(&input)?;
+    for warning in &song.warnings {
+        eprintln!("{warning}");
+    }
     if let Some(tempo) = cli.tempo {
         song.metadata.tempo = Some(tempo);
     }

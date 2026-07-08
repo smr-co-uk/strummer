@@ -14,11 +14,11 @@ pub struct MidiOptions {
     pub strum_spread_ms: Option<u16>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct MidiEvent {
     tick: u32,
     order: u8,
-    bytes: [u8; 3],
+    bytes: Vec<u8>,
 }
 
 pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
@@ -46,9 +46,18 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
     let strum_spread_ms = crate::validate::resolved_strum_spread_ms(song, options.strum_spread_ms);
     let spread_ticks = timing::ms_to_ticks(strum_spread_ms, tempo);
     let mut events = Vec::new();
+    let bar_ticks = timing::bar_ticks(song)?;
+
+    for part in &song.parts {
+        events.push(MidiEvent {
+            tick: checked_mul(to_u32(part.bar_index)?, bar_ticks)?,
+            order: 0,
+            bytes: marker_event(part.name.as_str()),
+        });
+    }
 
     for (bar_index, bar) in song.bars.iter().enumerate() {
-        let bar_start = checked_mul(to_u32(bar_index)?, timing::bar_ticks(song)?)?;
+        let bar_start = checked_mul(to_u32(bar_index)?, bar_ticks)?;
         for (beat_index, beat) in bar.beats.iter().enumerate() {
             let chord_notes = chord::notes_for_chord(&beat.chord).ok_or_else(|| {
                 AppError::Validation(format!(
@@ -152,12 +161,12 @@ fn push_strum(
         events.push(MidiEvent {
             tick: note_tick,
             order: 1,
-            bytes: [0x90, *note, velocity],
+            bytes: vec![0x90, *note, velocity],
         });
         events.push(MidiEvent {
             tick: checked_add(note_tick, duration)?,
             order: 0,
-            bytes: [0x80, *note, 0],
+            bytes: vec![0x80, *note, 0],
         });
     }
     Ok(())
@@ -170,12 +179,12 @@ fn push_muted(events: &mut Vec<MidiEvent>, tick: u32, notes: &[u8], duration: u3
         events.push(MidiEvent {
             tick,
             order: 1,
-            bytes: [0x90, *note, muted_velocity],
+            bytes: vec![0x90, *note, muted_velocity],
         });
         events.push(MidiEvent {
             tick: checked_add(tick, muted_duration)?,
             order: 0,
-            bytes: [0x80, *note, 0],
+            bytes: vec![0x80, *note, 0],
         });
     }
     Ok(())
@@ -183,6 +192,13 @@ fn push_muted(events: &mut Vec<MidiEvent>, tick: u32, notes: &[u8], duration: u3
 
 fn microseconds_per_quarter_note(tempo: u16) -> u32 {
     60_000_000 / u32::from(tempo)
+}
+
+fn marker_event(name: &str) -> Vec<u8> {
+    let mut bytes = vec![0xFF, 0x06];
+    write_delta(&mut bytes, u32::try_from(name.len()).unwrap_or(u32::MAX));
+    bytes.extend(name.as_bytes());
+    bytes
 }
 
 fn denominator_power(denominator: u8) -> Result<u8> {
@@ -284,6 +300,17 @@ mod tests {
     }
 
     #[test]
+    fn writes_part_names_as_midi_markers() {
+        let song =
+            parser::parse("tempo: 92\ntime: 4/4\n\npart: verse\nC\n---- ---- ---- ----\n").unwrap();
+        validate::validate(&song).unwrap();
+
+        let midi = write_midi(&song, MidiOptions::default()).unwrap();
+
+        assert!(midi.windows(8).any(|window| window == b"\xFF\x06\x05verse"));
+    }
+
+    #[test]
     fn returns_error_for_unvalidated_missing_tempo() {
         let song = Song {
             metadata: Metadata {
@@ -300,6 +327,7 @@ mod tests {
                 instrument: None,
             },
             parts: Vec::new(),
+            warnings: Vec::new(),
             bars: Vec::new(),
         };
 
@@ -332,6 +360,7 @@ mod tests {
                 instrument: None,
             },
             parts: Vec::new(),
+            warnings: Vec::new(),
             bars: vec![Bar {
                 line: 1,
                 beats: vec![

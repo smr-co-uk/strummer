@@ -5,6 +5,7 @@
 pub struct Song {
     pub metadata: Metadata,
     pub parts: Vec<Part>,
+    pub warnings: Vec<String>,
     pub bars: Vec<Bar>,
 }
 

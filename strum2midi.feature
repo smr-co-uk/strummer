@@ -124,6 +124,37 @@ Feature: Convert guitar strumming text files to MIDI
     And a file named "song.mid" should exist
     And the part markers should not change the MIDI notes
 
+  Scenario: Repeat previously defined parts
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      part: verse
+      C
+      D--- ---- ---- ----
+      part: chorus
+      G
+      D--- ---- ---- ----
+      part: verse
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain the verse part twice
+    And the MIDI file should contain marker events for part names
+
+  Scenario: Warn and ignore an undefined repeated part
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      part: bridge
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should fail
+    And stderr should contain "repeated part 'bridge' is not defined"
+
   Scenario: Downstroke plays chord notes from low to high
     Given a file named "song.strum" containing:
       """

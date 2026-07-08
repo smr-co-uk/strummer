@@ -112,7 +112,24 @@ G
 D--- D-U- --U- D-U-
 ```
 
-For Version 1, `part` is a structural placeholder for readability and library consumers. It shall not change MIDI timing, notes, instruments, or output events.
+The first content-bearing `part` for a given name defines that named part. A later `part` line using the same name and no following chart lines repeats the previously defined part in the generated MIDI:
+
+```text
+part: verse
+C
+D--- D-U- --U- D-U-
+
+part: chorus
+G
+D--- D-U- --U- D-U-
+
+part: verse
+part: chorus
+```
+
+If a repeated part name has not been defined, the program shall write a warning to stderr and ignore the repeat.
+
+The program shall write part names as MIDI marker events when generating MIDI so that capable MIDI players can display the song structure.
 
 Optional rhythm metadata:
 
@@ -394,6 +411,7 @@ Validation should detect:
 - Wrong number of beat patterns for the time signature
 - Wrong number of slots for the selected subdivision
 - Repeat marker without a previous bar
+- Repeated part name without a previous definition
 - Missing beat for compound meters that require explicit grouping
 - Unsupported beat
 - Unsupported subdivision

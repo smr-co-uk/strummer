@@ -92,6 +92,26 @@ fn supports_part_markers_between_chart_sections() {
     assert!(output.status.success(), "{}", stderr(&output));
     let midi = fs::read(root.join("song.mid")).unwrap();
     assert_eq!(note_on_count(&midi), 36);
+    assert!(midi.windows(8).any(|window| window == b"\xFF\x06\x05verse"));
+}
+
+#[test]
+fn repeats_previously_defined_parts() {
+    let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- ---- ---- ----\npart: chorus\nG\nD--- ---- ---- ----\npart: verse\n";
+    let (output, root) = run_case("repeat-part", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 9);
+}
+
+#[test]
+fn warns_and_ignores_undefined_part_repeats() {
+    let input = "tempo: 92\ntime: 4/4\n\npart: bridge\n";
+    let (output, _root) = run_case("undefined-repeat-part", input, &[]);
+
+    let stderr = stderr(&output);
+    assert!(stderr.contains("repeated part 'bridge' is not defined"));
 }
 
 #[test]

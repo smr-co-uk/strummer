@@ -93,6 +93,7 @@ mod tests {
                 instrument: None,
             },
             parts: Vec::new(),
+            warnings: Vec::new(),
             bars: Vec::new(),
         };
 
@@ -116,6 +117,7 @@ mod tests {
                 instrument: None,
             },
             parts: Vec::new(),
+            warnings: Vec::new(),
             bars: Vec::new(),
         };
 
