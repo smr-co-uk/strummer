@@ -232,3 +232,6 @@ Feature: Use subdivision and count metadata for strumming patterns
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
     And the error should mention "unsupported count"
+
+# Copyright 2026 smr.co.uk ltd
+# SPDX-License-Identifier: Apache-2.0

@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     error::{AppError, Result},
     model::{
@@ -5,6 +8,7 @@ use crate::{
         TimeSignature,
     },
 };
+use std::{collections::HashMap, ops::Range};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ChordMarker {
@@ -24,6 +28,13 @@ struct PatternToken {
     kind: PatternTokenKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PendingPart {
+    line: usize,
+    name: String,
+    bar_index: usize,
+}
+
 pub fn parse(input: &str) -> Result<Song> {
     if input.trim().is_empty() {
         return Err(AppError::Validation("empty input file".to_string()));
@@ -31,8 +42,12 @@ pub fn parse(input: &str) -> Result<Song> {
 
     let mut metadata = Metadata::default();
     let mut parts = Vec::new();
+    let mut warnings = Vec::new();
     let mut bars = Vec::new();
     let mut chart_lines = Vec::new();
+    let mut part_definitions = HashMap::new();
+    let mut current_part = None;
+    let mut pending_part = None;
 
     for (index, raw_line) in input.lines().enumerate() {
         let line_number = index + 1;
@@ -43,7 +58,16 @@ pub fn parse(input: &str) -> Result<Song> {
 
         if is_part_metadata(line) {
             flush_chart_lines(&mut chart_lines, &mut bars)?;
-            parse_part_line(line, line_number, bars.len(), &mut parts)?;
+            close_current_part(&mut current_part, &mut part_definitions, bars.len());
+            warn_for_pending_part(&mut pending_part, &mut warnings);
+            handle_part_line(
+                line,
+                line_number,
+                &part_definitions,
+                &mut pending_part,
+                &mut parts,
+                &mut bars,
+            )?;
         } else if bars.is_empty() && chart_lines.is_empty() && looks_like_metadata(line) {
             parse_metadata_line(line, line_number, &mut metadata)?;
         } else if (bars.is_empty() && chart_lines.is_empty() && looks_like_malformed_metadata(line))
@@ -53,15 +77,24 @@ pub fn parse(input: &str) -> Result<Song> {
                 "Line {line_number}: malformed metadata line"
             )));
         } else {
+            start_pending_part(
+                &mut pending_part,
+                &mut current_part,
+                &mut parts,
+                &mut warnings,
+            );
             chart_lines.push((line_number, raw_line.to_string()));
         }
     }
 
     flush_chart_lines(&mut chart_lines, &mut bars)?;
+    close_current_part(&mut current_part, &mut part_definitions, bars.len());
+    warn_for_pending_part(&mut pending_part, &mut warnings);
 
     Ok(Song {
         metadata,
         parts,
+        warnings,
         bars,
     })
 }
@@ -96,7 +129,14 @@ fn looks_like_metadata(line: &str) -> bool {
     let key = line.split(':').next().unwrap_or_default().trim();
     matches!(
         key,
-        "tempo" | "time" | "beat" | "subdivision" | "count" | "instrument"
+        "tempo"
+            | "time"
+            | "velocity"
+            | "strum_spread_ms"
+            | "beat"
+            | "subdivision"
+            | "count"
+            | "instrument"
     )
 }
 
@@ -104,7 +144,14 @@ fn looks_like_malformed_metadata(line: &str) -> bool {
     let key = line.split_whitespace().next().unwrap_or_default();
     matches!(
         key,
-        "tempo" | "time" | "beat" | "subdivision" | "count" | "instrument"
+        "tempo"
+            | "time"
+            | "velocity"
+            | "strum_spread_ms"
+            | "beat"
+            | "subdivision"
+            | "count"
+            | "instrument"
     ) && !line.contains(':')
 }
 
@@ -117,11 +164,13 @@ fn looks_like_malformed_part(line: &str) -> bool {
     line.split_whitespace().next().unwrap_or_default() == "part" && !line.contains(':')
 }
 
-fn parse_part_line(
+fn handle_part_line(
     line: &str,
     line_number: usize,
-    bar_index: usize,
+    definitions: &HashMap<String, Range<usize>>,
+    pending_part: &mut Option<PendingPart>,
     parts: &mut Vec<Part>,
+    bars: &mut Vec<Bar>,
 ) -> Result<()> {
     let Some((_, value)) = line.split_once(':') else {
         return Err(AppError::Parse(format!(
@@ -135,12 +184,89 @@ fn parse_part_line(
         )));
     }
 
-    parts.push(Part {
-        line: line_number,
-        name: name.to_string(),
-        bar_index,
-    });
+    let name = name.to_string();
+    let bar_index = bars.len();
+    if let Some(range) = definitions.get(&name) {
+        parts.push(Part {
+            line: line_number,
+            name,
+            bar_index,
+        });
+        repeat_part(range.clone(), line_number, bars);
+    } else {
+        *pending_part = Some(PendingPart {
+            line: line_number,
+            name,
+            bar_index,
+        });
+    }
     Ok(())
+}
+
+fn close_current_part(
+    current_part: &mut Option<(String, usize)>,
+    definitions: &mut HashMap<String, Range<usize>>,
+    end_bar_index: usize,
+) {
+    if let Some((name, start_bar_index)) = current_part.take()
+        && start_bar_index < end_bar_index
+    {
+        definitions
+            .entry(name)
+            .or_insert(start_bar_index..end_bar_index);
+    }
+}
+
+fn start_pending_part(
+    pending_part: &mut Option<PendingPart>,
+    current_part: &mut Option<(String, usize)>,
+    parts: &mut Vec<Part>,
+    warnings: &mut Vec<String>,
+) {
+    let Some(part) = pending_part.take() else {
+        return;
+    };
+    if part.bar_index
+        == parts
+            .last()
+            .map(|part| part.bar_index)
+            .unwrap_or(usize::MAX)
+        && parts
+            .last()
+            .is_some_and(|existing| existing.name == part.name)
+    {
+        warnings.push(format!(
+            "Warning: Line {}: duplicate part marker '{}'",
+            part.line, part.name
+        ));
+    }
+    parts.push(Part {
+        line: part.line,
+        name: part.name.clone(),
+        bar_index: part.bar_index,
+    });
+    *current_part = Some((part.name, part.bar_index));
+}
+
+fn warn_for_pending_part(pending_part: &mut Option<PendingPart>, warnings: &mut Vec<String>) {
+    if let Some(part) = pending_part.take() {
+        warnings.push(format!(
+            "Warning: Line {}: repeated part '{}' is not defined; ignoring repeat",
+            part.line, part.name
+        ));
+    }
+}
+
+fn repeat_part(range: Range<usize>, line_number: usize, bars: &mut Vec<Bar>) {
+    let repeated = bars[range]
+        .iter()
+        .cloned()
+        .map(|mut bar| {
+            bar.line = line_number;
+            bar
+        })
+        .collect::<Vec<_>>();
+    bars.extend(repeated);
 }
 
 fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) -> Result<()> {
@@ -160,6 +286,16 @@ fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) 
     match key {
         "tempo" => {
             metadata.tempo = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "velocity" => {
+            metadata.velocity = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "strum_spread_ms" => {
+            metadata.strum_spread_ms = Some(value.parse().map_err(|_| {
                 AppError::Parse(format!("Line {line_number}: malformed metadata line"))
             })?);
         }
@@ -415,6 +551,8 @@ mod tests {
                 .unwrap();
 
         assert_eq!(song.metadata.tempo, Some(92));
+        assert_eq!(song.metadata.velocity, None);
+        assert_eq!(song.metadata.strum_spread_ms, None);
         assert_eq!(
             song.metadata.time_signature,
             Some(TimeSignature {
@@ -457,6 +595,39 @@ mod tests {
         assert_eq!(song.parts[1].line, 7);
         assert_eq!(song.parts[1].bar_index, 1);
         assert_eq!(song.bars.len(), 2);
+        assert!(song.warnings.is_empty());
+    }
+
+    #[test]
+    fn repeats_previously_defined_parts() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- ---- ---- ----\npart: chorus\nG\nD--- ---- ---- ----\npart: verse\npart: chorus\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.parts.len(), 4);
+        assert_eq!(song.parts[0].bar_index, 0);
+        assert_eq!(song.parts[1].bar_index, 1);
+        assert_eq!(song.parts[2].bar_index, 2);
+        assert_eq!(song.parts[3].bar_index, 3);
+        assert_eq!(song.bars.len(), 4);
+        assert_eq!(song.bars[0].beats[0].chord, "C");
+        assert_eq!(song.bars[1].beats[0].chord, "G");
+        assert_eq!(song.bars[2].beats[0].chord, "C");
+        assert_eq!(song.bars[3].beats[0].chord, "G");
+        assert!(song.warnings.is_empty());
+    }
+
+    #[test]
+    fn warns_and_ignores_undefined_part_repeats() {
+        let song = parse("tempo: 92\ntime: 4/4\n\npart: bridge\n").unwrap();
+
+        assert!(song.parts.is_empty());
+        assert!(song.bars.is_empty());
+        assert_eq!(
+            song.warnings,
+            vec!["Warning: Line 4: repeated part 'bridge' is not defined; ignoring repeat"]
+        );
     }
 
     #[test]
@@ -482,5 +653,16 @@ mod tests {
             song.metadata.instrument,
             Some(Instrument::ElectricGuitarClean)
         );
+    }
+
+    #[test]
+    fn parses_velocity_and_strum_spread_metadata() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\nC\nD--- ---- ---- ----\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.metadata.velocity, Some(64));
+        assert_eq!(song.metadata.strum_spread_ms, Some(15));
     }
 }

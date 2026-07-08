@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -62,6 +65,26 @@ fn supports_instrument_metadata() {
 }
 
 #[test]
+fn supports_velocity_metadata() {
+    let input = "tempo: 92\ntime: 4/4\nvelocity: 64\n\nC\nD--- ---- ---- ----\n";
+    let (output, root) = run_case("velocity-metadata", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert!(midi.windows(3).any(|window| window == [0x90, 48, 64]));
+}
+
+#[test]
+fn command_line_velocity_overrides_metadata() {
+    let input = "tempo: 92\ntime: 4/4\nvelocity: 64\n\nC\nD--- ---- ---- ----\n";
+    let (output, root) = run_case("velocity-override", input, &["--velocity", "80"]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert!(midi.windows(3).any(|window| window == [0x90, 48, 80]));
+}
+
+#[test]
 fn supports_part_markers_between_chart_sections() {
     let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- D-U- --U- D-U-\npart: chorus\nG\nD--- D-U- --U- D-U-\n";
     let (output, root) = run_case("part-markers", input, &[]);
@@ -69,6 +92,26 @@ fn supports_part_markers_between_chart_sections() {
     assert!(output.status.success(), "{}", stderr(&output));
     let midi = fs::read(root.join("song.mid")).unwrap();
     assert_eq!(note_on_count(&midi), 36);
+    assert!(midi.windows(8).any(|window| window == b"\xFF\x06\x05verse"));
+}
+
+#[test]
+fn repeats_previously_defined_parts() {
+    let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- ---- ---- ----\npart: chorus\nG\nD--- ---- ---- ----\npart: verse\n";
+    let (output, root) = run_case("repeat-part", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 9);
+}
+
+#[test]
+fn warns_and_ignores_undefined_part_repeats() {
+    let input = "tempo: 92\ntime: 4/4\n\npart: bridge\n";
+    let (output, _root) = run_case("undefined-repeat-part", input, &[]);
+
+    let stderr = stderr(&output);
+    assert!(stderr.contains("repeated part 'bridge' is not defined"));
 }
 
 #[test]
@@ -91,13 +134,14 @@ fn rests_create_no_note_events() {
 }
 
 #[test]
-fn muted_strums_create_percussive_events() {
+fn muted_strums_create_short_low_velocity_chord_events() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nX--- ---- ---- ----\n";
     let (output, root) = run_case("muted", input, &[]);
 
     assert!(output.status.success(), "{}", stderr(&output));
     let midi = fs::read(root.join("song.mid")).unwrap();
-    assert!(midi.windows(3).any(|window| window == [0x99, 37, 35]));
+    assert!(midi.windows(3).any(|window| window == [0x90, 48, 25]));
+    assert!(!midi.iter().any(|byte| *byte == 0x99 || *byte == 0x89));
 }
 
 #[test]
@@ -158,6 +202,15 @@ fn rejects_missing_time_signature() {
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("missing time signature"));
+}
+
+#[test]
+fn rejects_zero_tempo() {
+    let input = "tempo: 0\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, _root) = run_case("zero-tempo", input, &[]);
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("tempo must be greater than zero"));
 }
 
 #[test]

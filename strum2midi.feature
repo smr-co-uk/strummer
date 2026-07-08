@@ -20,6 +20,9 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
     And a file named "song.mid" should exist
+
+# Copyright 2026 smr.co.uk ltd
+# SPDX-License-Identifier: Apache-2.0
     And "song.mid" should be a valid MIDI file
 
   Scenario: Use tempo from the input file
@@ -73,6 +76,36 @@ Feature: Convert guitar strumming text files to MIDI
     Then the command should succeed
     And the MIDI file should contain a program change event for clean electric guitar
 
+  Scenario: Use performance metadata from the input file
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      velocity: 64
+      strum_spread_ms: 15
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain note events with velocity 64
+
+  Scenario: Override performance metadata from the command line
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      velocity: 64
+      strum_spread_ms: 15
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid --velocity 80 --strum-spread-ms 5"
+    Then the command should succeed
+    And the MIDI file should contain note events with velocity 80
+
   Scenario: Use part markers for song structure
     Given a file named "song.strum" containing:
       """
@@ -90,6 +123,37 @@ Feature: Convert guitar strumming text files to MIDI
     Then the command should succeed
     And a file named "song.mid" should exist
     And the part markers should not change the MIDI notes
+
+  Scenario: Repeat previously defined parts
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      part: verse
+      C
+      D--- ---- ---- ----
+      part: chorus
+      G
+      D--- ---- ---- ----
+      part: verse
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain the verse part twice
+    And the MIDI file should contain marker events for part names
+
+  Scenario: Warn and ignore an undefined repeated part
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      part: bridge
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should fail
+    And stderr should contain "repeated part 'bridge' is not defined"
 
   Scenario: Downstroke plays chord notes from low to high
     Given a file named "song.strum" containing:
@@ -140,7 +204,7 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid"
     Then the MIDI file should contain no chord note events
 
-  Scenario: Muted strums create short percussive events
+  Scenario: Muted strums create short low-velocity chord events
     Given a file named "song.strum" containing:
       """
       tempo: 92
@@ -150,7 +214,7 @@ Feature: Convert guitar strumming text files to MIDI
       X--- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
-    Then the MIDI file should contain a short percussive event at the first slot
+    Then the MIDI file should contain short low-velocity C chord note events at the first slot
 
   Scenario: Reject an unknown chord
     Given a file named "song.strum" containing:

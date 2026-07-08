@@ -1,7 +1,11 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Song {
     pub metadata: Metadata,
     pub parts: Vec<Part>,
+    pub warnings: Vec<String>,
     pub bars: Vec<Bar>,
 }
 
@@ -16,6 +20,8 @@ pub struct Part {
 pub struct Metadata {
     pub tempo: Option<u16>,
     pub time_signature: Option<TimeSignature>,
+    pub velocity: Option<u8>,
+    pub strum_spread_ms: Option<u16>,
     pub beat: Option<Beat>,
     pub subdivision: Option<u8>,
     pub count: Option<CountStyle>,

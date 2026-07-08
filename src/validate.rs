@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::{
     chord,
     error::{AppError, Result},
@@ -6,9 +9,15 @@ use crate::{
 };
 
 pub fn validate(song: &Song) -> Result<()> {
-    if song.metadata.tempo.is_none() {
+    let Some(tempo) = song.metadata.tempo else {
         return Err(AppError::Validation("missing tempo".to_string()));
+    };
+    if tempo == 0 {
+        return Err(AppError::Validation(
+            "tempo must be greater than zero".to_string(),
+        ));
     }
+    validate_velocity(song.metadata.velocity)?;
     let Some(time_signature) = song.metadata.time_signature else {
         return Err(AppError::Validation("missing time signature".to_string()));
     };
@@ -75,6 +84,29 @@ pub fn resolved_instrument(song: &Song) -> crate::model::Instrument {
     song.metadata
         .instrument
         .unwrap_or(crate::model::Instrument::AcousticGuitar)
+}
+
+pub fn resolved_velocity(song: &Song, override_velocity: Option<u8>) -> Result<u8> {
+    let velocity = override_velocity.or(song.metadata.velocity).unwrap_or(90);
+    validate_velocity(Some(velocity))?;
+    Ok(velocity)
+}
+
+pub fn resolved_strum_spread_ms(song: &Song, override_strum_spread_ms: Option<u16>) -> u16 {
+    override_strum_spread_ms
+        .or(song.metadata.strum_spread_ms)
+        .unwrap_or(20)
+}
+
+fn validate_velocity(velocity: Option<u8>) -> Result<()> {
+    if let Some(velocity) = velocity
+        && velocity > 127
+    {
+        return Err(AppError::Validation(format!(
+            "unsupported velocity '{velocity}'"
+        )));
+    }
+    Ok(())
 }
 
 fn validate_count(count: Option<CountStyle>, beat: Beat, subdivision: u8) -> Result<()> {
@@ -149,5 +181,31 @@ mod tests {
                 .to_string()
                 .contains("missing beat")
         );
+    }
+
+    #[test]
+    fn rejects_velocity_outside_midi_data_range() {
+        let song = parser::parse("tempo: 92\ntime: 4/4\nvelocity: 200\n\nC\nD--- ---- ---- ----\n")
+            .unwrap();
+
+        assert!(
+            validate(&song)
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported velocity")
+        );
+    }
+
+    #[test]
+    fn resolves_velocity_and_strum_spread_from_metadata_with_overrides() {
+        let song = parser::parse(
+            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\nC\nD--- ---- ---- ----\n",
+        )
+        .unwrap();
+
+        assert_eq!(resolved_velocity(&song, None).unwrap(), 64);
+        assert_eq!(resolved_velocity(&song, Some(80)).unwrap(), 80);
+        assert_eq!(resolved_strum_spread_ms(&song, None), 15);
+        assert_eq!(resolved_strum_spread_ms(&song, Some(5)), 5);
     }
 }

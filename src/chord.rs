@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 pub fn notes_for_chord(name: &str) -> Option<Vec<u8>> {
     let (root_name, quality) = split_chord_name(name)?;
     let root = root_midi_note(root_name)?;

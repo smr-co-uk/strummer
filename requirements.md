@@ -60,8 +60,22 @@ Optional future metadata may include:
 ```text
 swing: false
 capo: 0
-velocity: 90
 ```
+
+Optional performance metadata:
+
+```text
+velocity: 90
+strum_spread_ms: 20
+```
+
+If `velocity` is omitted, the program shall use `90`.
+
+`velocity` controls MIDI note-on velocity for chord strums. Supported values are `0` through `127`.
+
+If `strum_spread_ms` is omitted, the program shall use `20`.
+
+`strum_spread_ms` controls the delay between notes inside a strum, in milliseconds.
 
 Optional instrument metadata:
 
@@ -98,7 +112,24 @@ G
 D--- D-U- --U- D-U-
 ```
 
-For Version 1, `part` is a structural placeholder for readability and library consumers. It shall not change MIDI timing, notes, instruments, or output events.
+The first content-bearing `part` for a given name defines that named part. A later `part` line using the same name and no following chart lines repeats the previously defined part in the generated MIDI:
+
+```text
+part: verse
+C
+D--- D-U- --U- D-U-
+
+part: chorus
+G
+D--- D-U- --U- D-U-
+
+part: verse
+part: chorus
+```
+
+If a repeated part name has not been defined, the program shall write a warning to stderr and ignore the repeat.
+
+The program shall write part names as MIDI marker events when generating MIDI so that capable MIDI players can display the song structure.
 
 Optional rhythm metadata:
 
@@ -309,9 +340,9 @@ strum_spread_ms: 20
 
 ### 6.5 Muted Strum
 
-A muted strum shall produce a short percussive MIDI event.
+A muted strum shall produce a short low-velocity MIDI event using the current chord notes.
 
-The implementation may use a short low-velocity chord, a percussion note, or another simple MIDI representation.
+Muted strums shall use the same guitar MIDI channel as normal chord strums.
 
 ### 6.6 Rests
 
@@ -380,6 +411,7 @@ Validation should detect:
 - Wrong number of beat patterns for the time signature
 - Wrong number of slots for the selected subdivision
 - Repeat marker without a previous bar
+- Repeated part name without a previous definition
 - Missing beat for compound meters that require explicit grouping
 - Unsupported beat
 - Unsupported subdivision
@@ -444,7 +476,7 @@ The implementation is complete when:
 - Downstrokes play low-to-high
 - Upstrokes play high-to-low
 - Rests produce silence
-- Muted strums produce short percussive events
+- Muted strums produce short low-velocity chord events
 - Invalid input produces useful line-based errors
 - Automated tests cover parsing, validation, chord mapping, timing, and MIDI event generation
 
@@ -453,3 +485,9 @@ For information only and not part of the requirements:
 * https://miditoolbox.com/analyzer
 * https://www.midi.org/specifications/item/table-1-summary-of-midi-message
 * https://streamdevprojects.com/midi
+
+---
+
+Copyright 2026 smr.co.uk ltd.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

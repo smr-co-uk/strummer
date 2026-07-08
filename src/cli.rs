@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 use std::path::PathBuf;
 
 use strum2midi::error::{AppError, Result};

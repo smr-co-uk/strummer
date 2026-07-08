@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 mod cli;
 
 use std::fs;
@@ -25,6 +28,9 @@ fn run() -> Result<()> {
     })?;
 
     let mut song = parser::parse(&input)?;
+    for warning in &song.warnings {
+        eprintln!("{warning}");
+    }
     if let Some(tempo) = cli.tempo {
         song.metadata.tempo = Some(tempo);
     }
@@ -33,8 +39,8 @@ fn run() -> Result<()> {
     let midi = midi_writer::write_midi(
         &song,
         MidiOptions {
-            velocity: cli.velocity.unwrap_or(90),
-            strum_spread_ms: cli.strum_spread_ms.unwrap_or(20),
+            velocity: cli.velocity,
+            strum_spread_ms: cli.strum_spread_ms,
         },
     )?;
 

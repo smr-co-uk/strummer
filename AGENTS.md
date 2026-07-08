@@ -67,9 +67,18 @@ Only add modules when they are useful.
 - Keep parsing, validation, timing, chord mapping, and MIDI writing separate.
 - Return clear user-facing errors, with line numbers where possible.
 - Avoid panics for invalid input.
+- In production code, prefer returning typed errors over using `expect`, `unwrap`, or other panic paths.
 - Keep dependencies minimal.
 - Prefer deterministic MIDI output so tests are reliable.
 - Add tests for new behaviour.
+
+## Licensing
+
+All new files must include the project copyright and Apache-2.0 license notice in the format appropriate for the file type:
+
+- Source code, scripts, configuration, and workflow files must use a short header.
+- Documentation files must use a short footer.
+- Use `Copyright 2026 smr.co.uk ltd` and `SPDX-License-Identifier: Apache-2.0` where comment syntax is available.
 
 ## Devcontainer
 
