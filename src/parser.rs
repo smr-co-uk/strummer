@@ -99,7 +99,14 @@ fn looks_like_metadata(line: &str) -> bool {
     let key = line.split(':').next().unwrap_or_default().trim();
     matches!(
         key,
-        "tempo" | "time" | "beat" | "subdivision" | "count" | "instrument"
+        "tempo"
+            | "time"
+            | "velocity"
+            | "strum_spread_ms"
+            | "beat"
+            | "subdivision"
+            | "count"
+            | "instrument"
     )
 }
 
@@ -107,7 +114,14 @@ fn looks_like_malformed_metadata(line: &str) -> bool {
     let key = line.split_whitespace().next().unwrap_or_default();
     matches!(
         key,
-        "tempo" | "time" | "beat" | "subdivision" | "count" | "instrument"
+        "tempo"
+            | "time"
+            | "velocity"
+            | "strum_spread_ms"
+            | "beat"
+            | "subdivision"
+            | "count"
+            | "instrument"
     ) && !line.contains(':')
 }
 
@@ -163,6 +177,16 @@ fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) 
     match key {
         "tempo" => {
             metadata.tempo = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "velocity" => {
+            metadata.velocity = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "strum_spread_ms" => {
+            metadata.strum_spread_ms = Some(value.parse().map_err(|_| {
                 AppError::Parse(format!("Line {line_number}: malformed metadata line"))
             })?);
         }
@@ -418,6 +442,8 @@ mod tests {
                 .unwrap();
 
         assert_eq!(song.metadata.tempo, Some(92));
+        assert_eq!(song.metadata.velocity, None);
+        assert_eq!(song.metadata.strum_spread_ms, None);
         assert_eq!(
             song.metadata.time_signature,
             Some(TimeSignature {
@@ -485,5 +511,16 @@ mod tests {
             song.metadata.instrument,
             Some(Instrument::ElectricGuitarClean)
         );
+    }
+
+    #[test]
+    fn parses_velocity_and_strum_spread_metadata() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\nC\nD--- ---- ---- ----\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.metadata.velocity, Some(64));
+        assert_eq!(song.metadata.strum_spread_ms, Some(15));
     }
 }

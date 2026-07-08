@@ -1,0 +1,26 @@
+tempo: 92
+time: 4/4
+velocity: 86
+strum_spread_ms: 18
+instrument: acoustic_guitar
+beat: quarter
+subdivision: 16
+count: 1e&a
+
+part: intro
+C#                    Bbm   Eb7   A#7
+D--- D-U- --U- D-U- | ... | ... | ...
+
+part: verse
+C         G
+D--- D-U- --U- X--- | D--- ---- --U- D-U-
+F                     G7
+D--- D-U- --U- D-U- | ...
+
+part: chorus
+Am                    F     C     G
+D--- D-U- --U- D-U- | ... | ... | ...
+
+part: outro
+C
+D--- ---- ---- ----

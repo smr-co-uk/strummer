@@ -76,6 +76,36 @@ Feature: Convert guitar strumming text files to MIDI
     Then the command should succeed
     And the MIDI file should contain a program change event for clean electric guitar
 
+  Scenario: Use performance metadata from the input file
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      velocity: 64
+      strum_spread_ms: 15
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the MIDI file should contain note events with velocity 64
+
+  Scenario: Override performance metadata from the command line
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+      velocity: 64
+      strum_spread_ms: 15
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid --velocity 80 --strum-spread-ms 5"
+    Then the command should succeed
+    And the MIDI file should contain note events with velocity 80
+
   Scenario: Use part markers for song structure
     Given a file named "song.strum" containing:
       """

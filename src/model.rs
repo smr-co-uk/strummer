@@ -19,6 +19,8 @@ pub struct Part {
 pub struct Metadata {
     pub tempo: Option<u16>,
     pub time_signature: Option<TimeSignature>,
+    pub velocity: Option<u8>,
+    pub strum_spread_ms: Option<u16>,
     pub beat: Option<Beat>,
     pub subdivision: Option<u8>,
     pub count: Option<CountStyle>,

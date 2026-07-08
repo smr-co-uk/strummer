@@ -18,9 +18,14 @@ pub fn bar_ticks(song: &Song) -> Result<u32> {
     let time_signature = song
         .metadata
         .time_signature
-        .expect("validated song has time");
-    Ok(beat_ticks(resolved_beat(song))
-        * u32::try_from(beats_per_bar(time_signature, resolved_beat(song))?).unwrap_or(u32::MAX))
+        .ok_or_else(|| AppError::Validation("missing time signature".to_string()))?;
+    beat_ticks(resolved_beat(song))
+        .checked_mul(
+            u32::try_from(beats_per_bar(time_signature, resolved_beat(song))?).map_err(|_| {
+                AppError::Encoding("MIDI timing exceeds supported range".to_string())
+            })?,
+        )
+        .ok_or_else(|| AppError::Encoding("MIDI timing exceeds supported range".to_string()))
 }
 
 pub fn slots_per_beat(beat: Beat, subdivision: u8) -> Result<usize> {
@@ -80,6 +85,8 @@ mod tests {
                     numerator: 4,
                     denominator: 4,
                 }),
+                velocity: None,
+                strum_spread_ms: None,
                 beat: None,
                 subdivision: None,
                 count: None,
@@ -101,6 +108,8 @@ mod tests {
                     numerator: 6,
                     denominator: 8,
                 }),
+                velocity: None,
+                strum_spread_ms: None,
                 beat: Some(Beat::DottedQuarter),
                 subdivision: Some(8),
                 count: None,

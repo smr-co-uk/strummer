@@ -60,8 +60,22 @@ Optional future metadata may include:
 ```text
 swing: false
 capo: 0
-velocity: 90
 ```
+
+Optional performance metadata:
+
+```text
+velocity: 90
+strum_spread_ms: 20
+```
+
+If `velocity` is omitted, the program shall use `90`.
+
+`velocity` controls MIDI note-on velocity for chord strums. Supported values are `0` through `127`.
+
+If `strum_spread_ms` is omitted, the program shall use `20`.
+
+`strum_spread_ms` controls the delay between notes inside a strum, in milliseconds.
 
 Optional instrument metadata:
 

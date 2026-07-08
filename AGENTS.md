@@ -67,6 +67,7 @@ Only add modules when they are useful.
 - Keep parsing, validation, timing, chord mapping, and MIDI writing separate.
 - Return clear user-facing errors, with line numbers where possible.
 - Avoid panics for invalid input.
+- In production code, prefer returning typed errors over using `expect`, `unwrap`, or other panic paths.
 - Keep dependencies minimal.
 - Prefer deterministic MIDI output so tests are reliable.
 - Add tests for new behaviour.

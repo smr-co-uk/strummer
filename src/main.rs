@@ -36,8 +36,8 @@ fn run() -> Result<()> {
     let midi = midi_writer::write_midi(
         &song,
         MidiOptions {
-            velocity: cli.velocity.unwrap_or(90),
-            strum_spread_ms: cli.strum_spread_ms.unwrap_or(20),
+            velocity: cli.velocity,
+            strum_spread_ms: cli.strum_spread_ms,
         },
     )?;
 
