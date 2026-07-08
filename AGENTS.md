@@ -71,6 +71,14 @@ Only add modules when they are useful.
 - Prefer deterministic MIDI output so tests are reliable.
 - Add tests for new behaviour.
 
+## Licensing
+
+All new files must include the project copyright and Apache-2.0 license notice in the format appropriate for the file type:
+
+- Source code, scripts, configuration, and workflow files must use a short header.
+- Documentation files must use a short footer.
+- Use `Copyright 2026 smr.co.uk ltd` and `SPDX-License-Identifier: Apache-2.0` where comment syntax is available.
+
 ## Devcontainer
 
 Provide a minimal `.devcontainer/devcontainer.json`.

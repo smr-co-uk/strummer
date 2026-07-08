@@ -79,3 +79,9 @@ Verify the installation:
 rustc --version
 cargo --version
 ```
+
+---
+
+Copyright 2026 smr.co.uk ltd.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

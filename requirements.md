@@ -453,3 +453,9 @@ For information only and not part of the requirements:
 * https://miditoolbox.com/analyzer
 * https://www.midi.org/specifications/item/table-1-summary-of-midi-message
 * https://streamdevprojects.com/midi
+
+---
+
+Copyright 2026 smr.co.uk ltd.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).

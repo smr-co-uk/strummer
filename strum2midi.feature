@@ -20,6 +20,9 @@ Feature: Convert guitar strumming text files to MIDI
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
     And a file named "song.mid" should exist
+
+# Copyright 2026 smr.co.uk ltd
+# SPDX-License-Identifier: Apache-2.0
     And "song.mid" should be a valid MIDI file
 
   Scenario: Use tempo from the input file

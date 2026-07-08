@@ -1,3 +1,6 @@
+// Copyright 2026 smr.co.uk ltd
+// SPDX-License-Identifier: Apache-2.0
+
 use std::{fmt, io, path::PathBuf};
 
 pub type Result<T> = std::result::Result<T, AppError>;
