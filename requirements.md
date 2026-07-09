@@ -36,10 +36,10 @@ Version 1 does not need to support:
 tempo: 92
 time: 4/4
 
-C                       Am
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
-F                       G
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| C                       Am
+| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| F                       G
+| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
 ```
 
 ## 4. Core Concepts
@@ -105,23 +105,23 @@ Part markers may appear before or between chord/pattern line pairs:
 
 ```text
 part: verse
-C
-D--- D-U- --U- D-U-
+| C
+| D--- D-U- --U- D-U-
 part: chorus
-G
-D--- D-U- --U- D-U-
+| G
+| D--- D-U- --U- D-U-
 ```
 
 The first content-bearing `part` for a given name defines that named part. A later `part` line using the same name and no following chart lines repeats the previously defined part in the generated MIDI:
 
 ```text
 part: verse
-C
-D--- D-U- --U- D-U-
+| C
+| D--- D-U- --U- D-U-
 
 part: chorus
-G
-D--- D-U- --U- D-U-
+| G
+| D--- D-U- --U- D-U-
 
 part: verse
 part: chorus
@@ -176,16 +176,27 @@ Supported values:
 Musical content is written as pairs of lines:
 
 ```text
-<chord-line>
-<strum-pattern-line>
+| <chord-line>
+| <strum-pattern-line>
 ```
 
 Example:
 
 ```text
-C                       Am
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| C                       Am
+| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+Optional lyrics can go here and may contain | bar signs
+## Notes
+Anything after this line is ignored by MIDI generation
 ```
+
+Chord and strum-pattern lines must start with `| `. This prefix identifies the two chart lines and is not part of the chord or strum pattern.
+
+An optional lyric line may follow each strum-pattern line. A lyric line is free-form text, may contain `|` characters, and must not start with `|`.
+
+Chord, strum, and lyric lines may use trailing space padding to align lyrics with chords and strums. Padding is ignored for MIDI generation.
+
+An optional `## Notes` section may appear after the musical content. The program shall ignore `## Notes` and every following line.
 
 The first letter of each chord marks the beat pattern where that chord begins. The chord applies from that beat pattern until the next chord marker.
 
@@ -196,8 +207,8 @@ Beat patterns inside a bar are separated by whitespace.
 A chord may begin inside a bar:
 
 ```text
-C         G
-D--- D-U- --U- D-U-
+| C         G
+| D--- D-U- --U- D-U-
 ```
 
 In this example, `G` begins at the third beat pattern.
@@ -205,15 +216,15 @@ In this example, `G` begins at the third beat pattern.
 The special marker `...` repeats the previous bar pattern. It may repeat the rhythm with a new chord:
 
 ```text
-C             Am    F     G
-D--- D-U- --U- D-U- | ... | ... | ...
+| C             Am    F     G
+| D--- D-U- --U- D-U- | ... | ... | ...
 ```
 
 It may also repeat the previous chord and rhythm:
 
 ```text
-C
-D--- D-U- --U- D-U- | ... | ... | ...
+| C
+| D--- D-U- --U- D-U- | ... | ... | ...
 ```
 
 The first bar in a file cannot use `...` because there is no previous bar pattern to repeat.
@@ -259,8 +270,8 @@ This means:
 For 4/4 time with `subdivision: 8`, a full bar may be written as:
 
 ```text
-C
-DU DU DU DU
+| C
+| DU DU DU DU
 ```
 
 This represents `1&2&3&4&`.
@@ -272,8 +283,8 @@ For 6/8 time with `beat: dotted-quarter` and `subdivision: 8`, a bar has two bea
 Example:
 
 ```text
-C
-D-U D-U
+| C
+| D-U D-U
 ```
 
 This represents `1&a2&a`.
@@ -420,6 +431,8 @@ Validation should detect:
 - Empty part name
 - Empty input file
 - Malformed metadata line
+- Chord or strum-pattern line missing the required `| ` prefix
+- Lyric line starting with `|`
 
 Example error:
 

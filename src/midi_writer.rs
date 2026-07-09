@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn writes_valid_midi_header_and_tempo() {
-        let song = parser::parse("tempo: 120\ntime: 4/4\n\nC\n---- ---- ---- ----\n").unwrap();
+        let song = parser::parse("tempo: 120\ntime: 4/4\n\n| C\n| ---- ---- ---- ----\n").unwrap();
         validate::validate(&song).unwrap();
 
         let midi = write_midi(
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn writes_explicit_instrument_program_change() {
         let song = parser::parse(
-            "tempo: 120\ntime: 4/4\ninstrument: electric_guitar_clean\n\nC\n---- ---- ---- ----\n",
+            "tempo: 120\ntime: 4/4\ninstrument: electric_guitar_clean\n\n| C\n| ---- ---- ---- ----\n",
         )
         .unwrap();
         validate::validate(&song).unwrap();
@@ -290,8 +290,9 @@ mod tests {
 
     #[test]
     fn uses_velocity_metadata_when_not_overridden() {
-        let song = parser::parse("tempo: 92\ntime: 4/4\nvelocity: 64\n\nC\nD--- ---- ---- ----\n")
-            .unwrap();
+        let song =
+            parser::parse("tempo: 92\ntime: 4/4\nvelocity: 64\n\n| C\n| D--- ---- ---- ----\n")
+                .unwrap();
         validate::validate(&song).unwrap();
 
         let midi = write_midi(&song, MidiOptions::default()).unwrap();
@@ -302,7 +303,8 @@ mod tests {
     #[test]
     fn writes_part_names_as_midi_markers() {
         let song =
-            parser::parse("tempo: 92\ntime: 4/4\n\npart: verse\nC\n---- ---- ---- ----\n").unwrap();
+            parser::parse("tempo: 92\ntime: 4/4\n\npart: verse\n| C\n| ---- ---- ---- ----\n")
+                .unwrap();
         validate::validate(&song).unwrap();
 
         let midi = write_midi(&song, MidiOptions::default()).unwrap();
@@ -413,7 +415,7 @@ mod tests {
 
     #[test]
     fn downstroke_orders_notes_low_to_high() {
-        let song = parser::parse("tempo: 92\ntime: 4/4\n\nC\nD--- ---- ---- ----\n").unwrap();
+        let song = parser::parse("tempo: 92\ntime: 4/4\n\n| C\n| D--- ---- ---- ----\n").unwrap();
         validate::validate(&song).unwrap();
 
         let midi = write_midi(
@@ -430,7 +432,7 @@ mod tests {
 
     #[test]
     fn upstroke_orders_notes_high_to_low() {
-        let song = parser::parse("tempo: 92\ntime: 4/4\n\nC\n--U- ---- ---- ----\n").unwrap();
+        let song = parser::parse("tempo: 92\ntime: 4/4\n\n| C\n| --U- ---- ---- ----\n").unwrap();
         validate::validate(&song).unwrap();
 
         let midi = write_midi(

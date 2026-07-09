@@ -48,42 +48,66 @@ pub fn parse(input: &str) -> Result<Song> {
     let mut part_definitions = HashMap::new();
     let mut current_part = None;
     let mut pending_part = None;
+    let mut can_accept_lyric = false;
 
     for (index, raw_line) in input.lines().enumerate() {
         let line_number = index + 1;
-        let line = raw_line.trim();
-        if line.is_empty() {
+        let line = raw_line.trim_end();
+        let trimmed_line = line.trim();
+        if trimmed_line == "## Notes" {
+            break;
+        }
+
+        if trimmed_line.is_empty() {
             continue;
         }
 
-        if is_part_metadata(line) {
+        if is_part_metadata(trimmed_line) {
             flush_chart_lines(&mut chart_lines, &mut bars)?;
+            can_accept_lyric = false;
             close_current_part(&mut current_part, &mut part_definitions, bars.len());
             warn_for_pending_part(&mut pending_part, &mut warnings);
             handle_part_line(
-                line,
+                trimmed_line,
                 line_number,
                 &part_definitions,
                 &mut pending_part,
                 &mut parts,
                 &mut bars,
             )?;
-        } else if bars.is_empty() && chart_lines.is_empty() && looks_like_metadata(line) {
-            parse_metadata_line(line, line_number, &mut metadata)?;
-        } else if (bars.is_empty() && chart_lines.is_empty() && looks_like_malformed_metadata(line))
-            || looks_like_malformed_part(line)
+        } else if bars.is_empty() && chart_lines.is_empty() && looks_like_metadata(trimmed_line) {
+            parse_metadata_line(trimmed_line, line_number, &mut metadata)?;
+        } else if (bars.is_empty()
+            && chart_lines.is_empty()
+            && looks_like_malformed_metadata(trimmed_line))
+            || looks_like_malformed_part(trimmed_line)
         {
             return Err(AppError::Parse(format!(
                 "Line {line_number}: malformed metadata line"
             )));
-        } else {
+        } else if let Some(chart_line) = line.strip_prefix("| ") {
+            can_accept_lyric = false;
             start_pending_part(
                 &mut pending_part,
                 &mut current_part,
                 &mut parts,
                 &mut warnings,
             );
-            chart_lines.push((line_number, raw_line.to_string()));
+            chart_lines.push((line_number, chart_line.to_string()));
+            if chart_lines.len() == 2 {
+                flush_chart_lines(&mut chart_lines, &mut bars)?;
+                can_accept_lyric = true;
+            }
+        } else if line.starts_with('|') {
+            return Err(AppError::Parse(format!(
+                "Line {line_number}: chord and strum lines must start with '| '"
+            )));
+        } else if can_accept_lyric {
+            can_accept_lyric = false;
+        } else {
+            return Err(AppError::Parse(format!(
+                "Line {line_number}: chord and strum lines must start with '| '"
+            )));
         }
     }
 
@@ -105,7 +129,10 @@ fn flush_chart_lines(chart_lines: &mut Vec<(usize, String)>, bars: &mut Vec<Bar>
     }
 
     if !chart_lines.len().is_multiple_of(2) {
-        let (line_number, _) = chart_lines.last().expect("odd chart line count has last");
+        let line_number = chart_lines
+            .last()
+            .map(|(line_number, _)| *line_number)
+            .unwrap_or_default();
         return Err(AppError::Parse(format!(
             "Line {line_number}: expected strum pattern line after chord line"
         )));
@@ -547,7 +574,7 @@ mod tests {
     #[test]
     fn parses_metadata_and_chart_pair() {
         let song =
-            parse("tempo: 92\ntime: 4/4\nbeat: quarter\nsubdivision: 8\ncount: 1&\n\nC            Am\nDU DU DU DU | ...\n")
+            parse("tempo: 92\ntime: 4/4\nbeat: quarter\nsubdivision: 8\ncount: 1&\n\n| C            Am\n| DU DU DU DU | ...\n")
                 .unwrap();
 
         assert_eq!(song.metadata.tempo, Some(92));
@@ -573,7 +600,7 @@ mod tests {
 
     #[test]
     fn supports_chord_change_inside_bar() {
-        let song = parse("tempo: 92\ntime: 4/4\n\nC         G\nD--- D-U- --U- D-U-\n").unwrap();
+        let song = parse("tempo: 92\ntime: 4/4\n\n| C         G\n| D--- D-U- --U- D-U-\n").unwrap();
 
         assert_eq!(song.bars.len(), 1);
         assert_eq!(song.bars[0].beats[0].chord, "C");
@@ -583,7 +610,7 @@ mod tests {
     #[test]
     fn parses_part_markers_between_chart_sections() {
         let song = parse(
-            "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- D-U- --U- D-U-\npart: chorus\nG\nD--- D-U- --U- D-U-\n",
+            "tempo: 92\ntime: 4/4\n\npart: verse\n| C\n| D--- D-U- --U- D-U-\npart: chorus\n| G\n| D--- D-U- --U- D-U-\n",
         )
         .unwrap();
 
@@ -601,7 +628,7 @@ mod tests {
     #[test]
     fn repeats_previously_defined_parts() {
         let song = parse(
-            "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- ---- ---- ----\npart: chorus\nG\nD--- ---- ---- ----\npart: verse\npart: chorus\n",
+            "tempo: 92\ntime: 4/4\n\npart: verse\n| C\n| D--- ---- ---- ----\npart: chorus\n| G\n| D--- ---- ---- ----\npart: verse\npart: chorus\n",
         )
         .unwrap();
 
@@ -632,20 +659,20 @@ mod tests {
 
     #[test]
     fn rejects_empty_part_name() {
-        let err = parse("tempo: 92\ntime: 4/4\npart:\nC\nD--- D-U- --U- D-U-\n").unwrap_err();
+        let err = parse("tempo: 92\ntime: 4/4\npart:\n| C\n| D--- D-U- --U- D-U-\n").unwrap_err();
         assert!(err.to_string().contains("malformed metadata line"));
     }
 
     #[test]
     fn reports_invalid_symbol() {
-        let err = parse("tempo: 92\ntime: 4/4\n\nC\nD-Z- D-U- --U- D-U-\n").unwrap_err();
+        let err = parse("tempo: 92\ntime: 4/4\n\n| C\n| D-Z- D-U- --U- D-U-\n").unwrap_err();
         assert!(err.to_string().contains("invalid strum symbol 'Z'"));
     }
 
     #[test]
     fn parses_instrument_metadata() {
         let song = parse(
-            "tempo: 92\ntime: 4/4\ninstrument: electric_guitar_clean\n\nC\nD--- ---- ---- ----\n",
+            "tempo: 92\ntime: 4/4\ninstrument: electric_guitar_clean\n\n| C\n| D--- ---- ---- ----\n",
         )
         .unwrap();
 
@@ -658,11 +685,44 @@ mod tests {
     #[test]
     fn parses_velocity_and_strum_spread_metadata() {
         let song = parse(
-            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\nC\nD--- ---- ---- ----\n",
+            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\n| C\n| D--- ---- ---- ----\n",
         )
         .unwrap();
 
         assert_eq!(song.metadata.velocity, Some(64));
         assert_eq!(song.metadata.strum_spread_ms, Some(15));
+    }
+
+    #[test]
+    fn ignores_one_lyric_line_after_a_chart_pair() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\n\n| C     Am\n| D--- | D---\nA lyric line can contain | bar signs\n| F\n| D--- ---- ---- ----\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.bars.len(), 3);
+        assert_eq!(song.bars[0].beats[0].chord, "C");
+        assert_eq!(song.bars[1].beats[0].chord, "Am");
+        assert_eq!(song.bars[2].beats[0].chord, "F");
+    }
+
+    #[test]
+    fn rejects_chart_lines_without_required_prefix() {
+        let err = parse("tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n").unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("chord and strum lines must start with '| '")
+        );
+    }
+
+    #[test]
+    fn ignores_everything_after_notes_section() {
+        let song = parse(
+            "tempo: 92\ntime: 4/4\n\n| C\n| D--- ---- ---- ----\n## Notes\nThis can be anything\nC\nbad metadata\n| Hm\n| ZZZZ\n",
+        )
+        .unwrap();
+
+        assert_eq!(song.bars.len(), 1);
+        assert_eq!(song.bars[0].beats[0].chord, "C");
     }
 }
