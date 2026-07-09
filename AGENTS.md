@@ -72,6 +72,17 @@ Only add modules when they are useful.
 - Prefer deterministic MIDI output so tests are reliable.
 - Add tests for new behaviour.
 
+## Feature Files
+
+Feature files are specification-only. They are not intended to be executed directly.
+
+When adding or changing acceptance behaviour:
+
+- Add or update the relevant `.feature` scenario.
+- Give each scenario a stable tag, for example `@STRUM-001` or `@SUBDIV-001`.
+- Add or update the executable Rust acceptance test in `tests/acceptance.rs`.
+- Include the feature ID in the Rust test name, for example `strum_001_converts_simple_four_chord_file`.
+
 ## Licensing
 
 All new files must include the project copyright and Apache-2.0 license notice in the format appropriate for the file type:
