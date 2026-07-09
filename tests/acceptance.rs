@@ -20,7 +20,7 @@ fn run_case(name: &str, input: &str, args: &[&str]) -> (std::process::Output, Pa
 }
 
 #[test]
-fn converts_simple_four_chord_file() {
+fn strum_001_converts_simple_four_chord_file() {
     let input = "tempo: 92\ntime: 4/4\n\nC                       Am\nD--- D-U- --U- D-U- | --U- D-U- --U- D-U-\nF                       G\nD--- D-U- --U- D-U- | --U- D-U- --U- D-U-\n";
     let (output, root) = run_case("simple", input, &[]);
 
@@ -31,7 +31,20 @@ fn converts_simple_four_chord_file() {
 }
 
 #[test]
-fn command_line_tempo_overrides_metadata() {
+fn strum_002_uses_tempo_from_input_file() {
+    let input = "tempo: 120\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, root) = run_case("tempo-input", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert!(
+        midi.windows(6)
+            .any(|window| window == [0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20])
+    );
+}
+
+#[test]
+fn strum_003_command_line_tempo_overrides_metadata() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, root) = run_case("tempo-override", input, &["--tempo", "100"]);
 
@@ -44,7 +57,7 @@ fn command_line_tempo_overrides_metadata() {
 }
 
 #[test]
-fn defaults_to_acoustic_guitar_instrument() {
+fn strum_004_defaults_to_acoustic_guitar_instrument() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, root) = run_case("default-instrument", input, &[]);
 
@@ -54,7 +67,7 @@ fn defaults_to_acoustic_guitar_instrument() {
 }
 
 #[test]
-fn supports_instrument_metadata() {
+fn strum_005_supports_instrument_metadata() {
     let input =
         "tempo: 92\ntime: 4/4\ninstrument: electric_guitar_clean\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, root) = run_case("instrument", input, &[]);
@@ -65,7 +78,7 @@ fn supports_instrument_metadata() {
 }
 
 #[test]
-fn supports_velocity_metadata() {
+fn strum_006_supports_velocity_metadata() {
     let input = "tempo: 92\ntime: 4/4\nvelocity: 64\n\nC\nD--- ---- ---- ----\n";
     let (output, root) = run_case("velocity-metadata", input, &[]);
 
@@ -75,7 +88,7 @@ fn supports_velocity_metadata() {
 }
 
 #[test]
-fn command_line_velocity_overrides_metadata() {
+fn strum_007_command_line_velocity_overrides_metadata() {
     let input = "tempo: 92\ntime: 4/4\nvelocity: 64\n\nC\nD--- ---- ---- ----\n";
     let (output, root) = run_case("velocity-override", input, &["--velocity", "80"]);
 
@@ -85,7 +98,7 @@ fn command_line_velocity_overrides_metadata() {
 }
 
 #[test]
-fn supports_part_markers_between_chart_sections() {
+fn strum_008_supports_part_markers_between_chart_sections() {
     let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- D-U- --U- D-U-\npart: chorus\nG\nD--- D-U- --U- D-U-\n";
     let (output, root) = run_case("part-markers", input, &[]);
 
@@ -96,7 +109,7 @@ fn supports_part_markers_between_chart_sections() {
 }
 
 #[test]
-fn repeats_previously_defined_parts() {
+fn strum_009_repeats_previously_defined_parts() {
     let input = "tempo: 92\ntime: 4/4\n\npart: verse\nC\nD--- ---- ---- ----\npart: chorus\nG\nD--- ---- ---- ----\npart: verse\n";
     let (output, root) = run_case("repeat-part", input, &[]);
 
@@ -106,7 +119,7 @@ fn repeats_previously_defined_parts() {
 }
 
 #[test]
-fn warns_and_ignores_undefined_part_repeats() {
+fn strum_010_warns_and_ignores_undefined_part_repeats() {
     let input = "tempo: 92\ntime: 4/4\n\npart: bridge\n";
     let (output, _root) = run_case("undefined-repeat-part", input, &[]);
 
@@ -115,7 +128,29 @@ fn warns_and_ignores_undefined_part_repeats() {
 }
 
 #[test]
-fn rejects_unsupported_instrument_metadata() {
+fn strum_011_downstroke_orders_notes_low_to_high() {
+    let input = "tempo: 92\ntime: 4/4\n\nC\nD--- ---- ---- ----\n";
+    let (output, root) = run_case("downstroke-order", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    let notes = note_on_notes(&midi);
+    assert_eq!(&notes[..3], &[48, 52, 55]);
+}
+
+#[test]
+fn strum_012_upstroke_orders_notes_high_to_low() {
+    let input = "tempo: 92\ntime: 4/4\n\nC\n--U- ---- ---- ----\n";
+    let (output, root) = run_case("upstroke-order", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    let notes = note_on_notes(&midi);
+    assert_eq!(&notes[..3], &[55, 52, 48]);
+}
+
+#[test]
+fn strum_019_rejects_unsupported_instrument_metadata() {
     let input = "tempo: 92\ntime: 4/4\ninstrument: banjo\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("bad-instrument", input, &[]);
 
@@ -124,7 +159,7 @@ fn rejects_unsupported_instrument_metadata() {
 }
 
 #[test]
-fn rests_create_no_note_events() {
+fn strum_014_rests_create_no_note_events() {
     let input = "tempo: 92\ntime: 4/4\n\nC\n---- ---- ---- ----\n";
     let (output, root) = run_case("rests", input, &[]);
 
@@ -134,7 +169,7 @@ fn rests_create_no_note_events() {
 }
 
 #[test]
-fn muted_strums_create_short_low_velocity_chord_events() {
+fn strum_015_muted_strums_create_short_low_velocity_chord_events() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nX--- ---- ---- ----\n";
     let (output, root) = run_case("muted", input, &[]);
 
@@ -145,7 +180,7 @@ fn muted_strums_create_short_low_velocity_chord_events() {
 }
 
 #[test]
-fn rejects_unknown_chord_with_line_number() {
+fn strum_016_rejects_unknown_chord_with_line_number() {
     let input = "tempo: 92\ntime: 4/4\n\nHm\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("unknown-chord", input, &[]);
 
@@ -156,7 +191,7 @@ fn rejects_unknown_chord_with_line_number() {
 }
 
 #[test]
-fn supports_sharp_and_flat_chords() {
+fn strum_013_supports_sharp_and_flat_chords() {
     let input =
         "tempo: 92\ntime: 4/4\n\nC#      Bbm     Eb7     A#7\nD---    D---    D---    D---\n";
     let (output, root) = run_case("sharp-flat-chords", input, &[]);
@@ -167,7 +202,7 @@ fn supports_sharp_and_flat_chords() {
 }
 
 #[test]
-fn rejects_invalid_symbol() {
+fn strum_017_rejects_invalid_symbol() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nD-Z- D-U- --U- D-U-\n";
     let (output, _root) = run_case("invalid-symbol", input, &[]);
 
@@ -178,7 +213,7 @@ fn rejects_invalid_symbol() {
 }
 
 #[test]
-fn rejects_malformed_metadata() {
+fn strum_018_rejects_malformed_metadata() {
     let input = "tempo 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("malformed-metadata", input, &[]);
 
@@ -187,7 +222,7 @@ fn rejects_malformed_metadata() {
 }
 
 #[test]
-fn rejects_missing_tempo() {
+fn strum_020_rejects_missing_tempo() {
     let input = "time: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("missing-tempo", input, &[]);
 
@@ -196,7 +231,7 @@ fn rejects_missing_tempo() {
 }
 
 #[test]
-fn rejects_missing_time_signature() {
+fn strum_021_rejects_missing_time_signature() {
     let input = "tempo: 92\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("missing-time", input, &[]);
 
@@ -205,7 +240,7 @@ fn rejects_missing_time_signature() {
 }
 
 #[test]
-fn rejects_zero_tempo() {
+fn strum_024_rejects_zero_tempo() {
     let input = "tempo: 0\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
     let (output, _root) = run_case("zero-tempo", input, &[]);
 
@@ -214,7 +249,7 @@ fn rejects_zero_tempo() {
 }
 
 #[test]
-fn rejects_wrong_number_of_patterns() {
+fn strum_022_rejects_wrong_number_of_patterns() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U-\n";
     let (output, _root) = run_case("wrong-patterns", input, &[]);
 
@@ -223,7 +258,7 @@ fn rejects_wrong_number_of_patterns() {
 }
 
 #[test]
-fn accepts_extra_whitespace() {
+fn strum_023_accepts_extra_whitespace() {
     let input = "tempo: 92\ntime: 4/4\n\nC\nD---      D-U-      --U-      D-U-\n";
     let (output, root) = run_case("whitespace", input, &[]);
 
@@ -232,7 +267,7 @@ fn accepts_extra_whitespace() {
 }
 
 #[test]
-fn supports_four_four_eighth_note_subdivision() {
+fn subdiv_001_supports_four_four_eighth_note_subdivision() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC\nDU DU DU DU\n";
     let (output, root) = run_case("four-four-eighths", input, &[]);
 
@@ -242,7 +277,37 @@ fn supports_four_four_eighth_note_subdivision() {
 }
 
 #[test]
-fn supports_three_four_eighth_note_subdivision() {
+fn subdiv_006_supports_four_four_sixteenth_note_count() {
+    let input = "tempo: 92\ntime: 4/4\nsubdivision: 16\ncount: 1e&a\n\nC\nD-U- D-U- --U- D-U-\n";
+    let (output, root) = run_case("four-four-sixteenths", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 21);
+}
+
+#[test]
+fn subdiv_007_supports_four_four_alternate_sixteenth_note_count() {
+    let input = "tempo: 92\ntime: 4/4\nsubdivision: 16\ncount: 1a&a\n\nC\nD-U- D-U- --U- D-U-\n";
+    let (output, root) = run_case("four-four-alternate-sixteenths", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 21);
+}
+
+#[test]
+fn subdiv_008_default_subdivision_remains_sixteenth_note_compatible() {
+    let input = "tempo: 92\ntime: 4/4\n\nC\nD--- D-U- --U- D-U-\n";
+    let (output, root) = run_case("default-sixteenths", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 18);
+}
+
+#[test]
+fn subdiv_009_supports_three_four_eighth_note_subdivision() {
     let input = "tempo: 92\ntime: 3/4\nsubdivision: 8\ncount: 1&\n\nC\nDU DU DU\n";
     let (output, root) = run_case("three-four-eighths", input, &[]);
 
@@ -252,7 +317,17 @@ fn supports_three_four_eighth_note_subdivision() {
 }
 
 #[test]
-fn supports_six_eight_dotted_quarter_beat() {
+fn subdiv_010_supports_three_four_sixteenth_note_subdivision() {
+    let input = "tempo: 92\ntime: 3/4\nsubdivision: 16\ncount: 1e&a\n\nC\nD-U- D-U- --U-\n";
+    let (output, root) = run_case("three-four-sixteenths", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_eq!(note_on_count(&midi), 15);
+}
+
+#[test]
+fn subdiv_011_supports_six_eight_dotted_quarter_beat() {
     let input =
         "tempo: 72\ntime: 6/8\nbeat: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n";
     let (output, root) = run_case("six-eight-compound", input, &[]);
@@ -267,7 +342,7 @@ fn supports_six_eight_dotted_quarter_beat() {
 }
 
 #[test]
-fn rejects_too_many_slots_for_eighth_note_subdivision() {
+fn subdiv_013_rejects_too_many_slots_for_eighth_note_subdivision() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC\nD-U- D-U- --U- D-U-\n";
     let (output, _root) = run_case("too-many-eighth-slots", input, &[]);
 
@@ -278,7 +353,7 @@ fn rejects_too_many_slots_for_eighth_note_subdivision() {
 }
 
 #[test]
-fn rejects_unsupported_subdivision() {
+fn subdiv_014_rejects_unsupported_subdivision() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 12\n\nC\nDU DU DU DU\n";
     let (output, _root) = run_case("unsupported-subdivision", input, &[]);
 
@@ -287,7 +362,7 @@ fn rejects_unsupported_subdivision() {
 }
 
 #[test]
-fn rejects_unsupported_count_style() {
+fn subdiv_015_rejects_unsupported_count_style() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 16\ncount: triplet\n\nC\nD-U- D-U- --U- D-U-\n";
     let (output, _root) = run_case("unsupported-count", input, &[]);
 
@@ -296,7 +371,7 @@ fn rejects_unsupported_count_style() {
 }
 
 #[test]
-fn rejects_six_eight_without_beat() {
+fn subdiv_012_rejects_six_eight_without_beat() {
     let input = "tempo: 72\ntime: 6/8\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n";
     let (output, _root) = run_case("six-eight-missing-beat", input, &[]);
 
@@ -305,7 +380,7 @@ fn rejects_six_eight_without_beat() {
 }
 
 #[test]
-fn supports_multiple_bars_per_line() {
+fn subdiv_002_supports_multiple_bars_per_line() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC             Am\nDU DU DU DU | D- DU -U DU\n";
     let (output, root) = run_case("multiple-bars-per-line", input, &[]);
 
@@ -315,7 +390,7 @@ fn supports_multiple_bars_per_line() {
 }
 
 #[test]
-fn supports_chord_repeat_marker() {
+fn subdiv_003_supports_chord_repeat_marker() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC             Am    F     G\nDU DU DU DU | ... | ... | ...\n";
     let (output, root) = run_case("chord-repeat-marker", input, &[]);
 
@@ -325,7 +400,7 @@ fn supports_chord_repeat_marker() {
 }
 
 #[test]
-fn supports_full_bar_repeat_marker() {
+fn subdiv_004_supports_full_bar_repeat_marker() {
     let input =
         "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC\nDU DU DU DU | ... | ... | ...\n";
     let (output, root) = run_case("full-repeat-marker", input, &[]);
@@ -336,7 +411,7 @@ fn supports_full_bar_repeat_marker() {
 }
 
 #[test]
-fn rejects_repeat_marker_without_previous_bar() {
+fn subdiv_005_rejects_repeat_marker_without_previous_bar() {
     let input = "tempo: 92\ntime: 4/4\nsubdivision: 8\ncount: 1&\n\nC\n...\n";
     let (output, _root) = run_case("bad-repeat-marker", input, &[]);
 
@@ -353,6 +428,14 @@ fn note_on_count(midi: &[u8]) -> usize {
         .iter()
         .filter(|(status, _note, velocity)| *status == 0x90 && *velocity > 0)
         .count()
+}
+
+fn note_on_notes(midi: &[u8]) -> Vec<u8> {
+    note_events(midi)
+        .iter()
+        .filter(|(status, _note, velocity)| *status == 0x90 && *velocity > 0)
+        .map(|(_status, note, _velocity)| *note)
+        .collect()
 }
 
 fn note_events(midi: &[u8]) -> Vec<(u8, u8, u8)> {

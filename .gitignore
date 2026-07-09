@@ -2,3 +2,4 @@
 /.idea
 *.mid
 /output
+.DS_Store
