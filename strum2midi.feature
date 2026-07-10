@@ -16,10 +16,10 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C                       Am
-      D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
-      F                       G
-      D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+      | C                       Am
+      | D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+      | F                       G
+      | D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -34,8 +34,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 120
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the MIDI file should contain a tempo event for 120 BPM
@@ -47,8 +47,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid --tempo 100"
     Then the MIDI file should contain a tempo event for 100 BPM
@@ -60,8 +60,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -75,8 +75,8 @@ Feature: Convert guitar strumming text files to MIDI
       time: 4/4
       instrument: electric_guitar_clean
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -91,8 +91,8 @@ Feature: Convert guitar strumming text files to MIDI
       velocity: 64
       strum_spread_ms: 15
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -107,8 +107,8 @@ Feature: Convert guitar strumming text files to MIDI
       velocity: 64
       strum_spread_ms: 15
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid --velocity 80 --strum-spread-ms 5"
     Then the command should succeed
@@ -122,11 +122,11 @@ Feature: Convert guitar strumming text files to MIDI
       time: 4/4
 
       part: verse
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       part: chorus
-      G
-      D--- D-U- --U- D-U-
+      | G
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -141,11 +141,11 @@ Feature: Convert guitar strumming text files to MIDI
       time: 4/4
 
       part: verse
-      C
-      D--- ---- ---- ----
+      | C
+      | D--- ---- ---- ----
       part: chorus
-      G
-      D--- ---- ---- ----
+      | G
+      | D--- ---- ---- ----
       part: verse
       """
     When I run "strum2midi song.strum song.mid"
@@ -173,8 +173,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D--- ---- ---- ----
+      | C
+      | D--- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
     Then the first strum should play the C chord notes from low to high
@@ -186,8 +186,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      --U- ---- ---- ----
+      | C
+      | --U- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
     Then the first strum should play the C chord notes from high to low
@@ -199,8 +199,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C#      Bbm     Eb7     A#7
-      D---    D---    D---    D---
+      | C#      Bbm     Eb7     A#7
+      | D---    D---    D---    D---
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -213,8 +213,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      ---- ---- ---- ----
+      | C
+      | ---- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
     Then the MIDI file should contain no chord note events
@@ -226,8 +226,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      X--- ---- ---- ----
+      | C
+      | X--- ---- ---- ----
       """
     When I run "strum2midi song.strum song.mid"
     Then the MIDI file should contain short low-velocity C chord note events at the first slot
@@ -239,8 +239,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      Hm
-      D--- D-U- --U- D-U-
+      | Hm
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -254,8 +254,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D-Z- D-U- --U- D-U-
+      | C
+      | D-Z- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -269,8 +269,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo 92
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -284,8 +284,8 @@ Feature: Convert guitar strumming text files to MIDI
       time: 4/4
       instrument: banjo
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -297,8 +297,8 @@ Feature: Convert guitar strumming text files to MIDI
       """
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -310,8 +310,8 @@ Feature: Convert guitar strumming text files to MIDI
       """
       tempo: 92
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -324,8 +324,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 0
       time: 4/4
 
-      C
-      D--- D-U- --U- D-U-
+      | C
+      | D--- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -338,8 +338,8 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D--- D-U- --U-
+      | C
+      | D--- D-U- --U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -352,9 +352,56 @@ Feature: Convert guitar strumming text files to MIDI
       tempo: 92
       time: 4/4
 
-      C
-      D---      D-U-      --U-      D-U-
+      | C
+      | D---      D-U-      --U-      D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
     And a file named "song.mid" should exist
+
+  @STRUM-025
+  Scenario: Accept optional lyrics under strum lines
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      | C                       Am
+      | D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+      A lyric line can contain | bar signs
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the lyrics should not change the generated MIDI notes
+
+  @STRUM-026
+  Scenario: Reject chart lines without the required bar prefix
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      C
+      D--- D-U- --U- D-U-
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should fail
+    And the error should mention "chord and strum lines must start with '| '"
+
+  @STRUM-027
+  Scenario: Ignore everything after the notes section
+    Given a file named "song.strum" containing:
+      """
+      tempo: 92
+      time: 4/4
+
+      | C
+      | D--- ---- ---- ----
+      ## Notes
+      Free-form notes can include | bars
+      Hm
+      | ZZZZ
+      """
+    When I run "strum2midi song.strum song.mid"
+    Then the command should succeed
+    And the notes section should not change the generated MIDI notes

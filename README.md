@@ -22,11 +22,11 @@ time: 4/4
 instrument: acoustic_guitar
 
 part: verse
-C                       Am
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| C                       Am
+| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
 part: chorus
-F                       G
-D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| F                       G
+| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
 ```
 
 After running the command, `output.mid` can be opened in a MIDI player, DAW, or MIDI inspection tool.

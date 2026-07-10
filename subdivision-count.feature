@@ -18,8 +18,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C
-      DU DU DU DU
+      | C
+      | DU DU DU DU
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -35,8 +35,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C             Am             F              G
-      DU DU DU DU | D- DU -U DU | DU D- DU -U | D- DU DU -U
+      | C             Am             F              G
+      | DU DU DU DU | D- DU -U DU | DU D- DU -U | D- DU DU -U
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -51,8 +51,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C             Am    F     G
-      DU DU DU DU | ... | ... | ...
+      | C             Am    F     G
+      | DU DU DU DU | ... | ... | ...
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -68,8 +68,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C
-      DU DU DU DU | ... | ... | ...
+      | C
+      | DU DU DU DU | ... | ... | ...
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -84,8 +84,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C
-      ...
+      | C
+      | ...
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -100,8 +100,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 16
       count: 1e&a
 
-      C
-      D-U- D-U- --U- D-U-
+      | C
+      | D-U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -116,8 +116,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 16
       count: 1a&a
 
-      C
-      D-U- D-U- --U- D-U-
+      | C
+      | D-U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -130,8 +130,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       tempo: 92
       time: 4/4
 
-      C
-      D-U- D-U- --U- D-U-
+      | C
+      | D-U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -146,8 +146,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C
-      DU DU DU
+      | C
+      | DU DU DU
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -162,8 +162,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 16
       count: 1e&a
 
-      C
-      D-U- D-U- D-U-
+      | C
+      | D-U- D-U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -179,8 +179,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&a
 
-      C
-      D-U D-U
+      | C
+      | D-U D-U
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should succeed
@@ -196,8 +196,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&a
 
-      C
-      D-U D-U
+      | C
+      | D-U D-U
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -212,8 +212,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 8
       count: 1&
 
-      C
-      D-U- D-U- --U- D-U-
+      | C
+      | D-U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -228,8 +228,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       time: 4/4
       subdivision: 12
 
-      C
-      DU DU DU DU
+      | C
+      | DU DU DU DU
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail
@@ -244,8 +244,8 @@ Feature: Use subdivision and count metadata for strumming patterns
       subdivision: 16
       count: triplet
 
-      C
-      D-U- D-U- --U- D-U-
+      | C
+      | D-U- D-U- --U- D-U-
       """
     When I run "strum2midi song.strum song.mid"
     Then the command should fail

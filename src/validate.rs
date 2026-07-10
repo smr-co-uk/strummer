@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn accepts_three_four_with_three_quarter_beats() {
         let song =
-            parser::parse("tempo: 92\ntime: 3/4\nsubdivision: 8\ncount: 1&\n\nC\nDU DU DU\n")
+            parser::parse("tempo: 92\ntime: 3/4\nsubdivision: 8\ncount: 1&\n\n| C\n| DU DU DU\n")
                 .unwrap();
 
         validate(&song).unwrap();
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn accepts_six_eight_with_two_dotted_quarter_beats() {
         let song = parser::parse(
-            "tempo: 72\ntime: 6/8\nbeat: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n",
+            "tempo: 72\ntime: 6/8\nbeat: dotted-quarter\nsubdivision: 8\ncount: 1&a\n\n| C\n| D-U D-U\n",
         )
         .unwrap();
 
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn rejects_six_eight_without_beat() {
         let song =
-            parser::parse("tempo: 72\ntime: 6/8\nsubdivision: 8\ncount: 1&a\n\nC\nD-U D-U\n")
+            parser::parse("tempo: 72\ntime: 6/8\nsubdivision: 8\ncount: 1&a\n\n| C\n| D-U D-U\n")
                 .unwrap();
 
         assert!(
@@ -185,8 +185,9 @@ mod tests {
 
     #[test]
     fn rejects_velocity_outside_midi_data_range() {
-        let song = parser::parse("tempo: 92\ntime: 4/4\nvelocity: 200\n\nC\nD--- ---- ---- ----\n")
-            .unwrap();
+        let song =
+            parser::parse("tempo: 92\ntime: 4/4\nvelocity: 200\n\n| C\n| D--- ---- ---- ----\n")
+                .unwrap();
 
         assert!(
             validate(&song)
@@ -199,7 +200,7 @@ mod tests {
     #[test]
     fn resolves_velocity_and_strum_spread_from_metadata_with_overrides() {
         let song = parser::parse(
-            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\nC\nD--- ---- ---- ----\n",
+            "tempo: 92\ntime: 4/4\nvelocity: 64\nstrum_spread_ms: 15\n\n| C\n| D--- ---- ---- ----\n",
         )
         .unwrap();
 
