@@ -4,7 +4,7 @@
 
 `strum2midi` is a small Rust CLI that converts a plain-text guitar strumming file into a standard MIDI file.
 
-It reads metadata such as tempo, time signature, rhythm subdivision, instrument, and song parts, then turns chord and strum pattern lines into deterministic MIDI note events.
+It reads metadata such as tempo, time signature, rhythm subdivision, instrument, voicing, and song parts, then turns chord and strum pattern lines into deterministic MIDI note events.
 
 ## How to Run
 
@@ -20,18 +20,23 @@ Example `input.strum`:
 tempo: 92
 time: 4/4
 instrument: acoustic_guitar
+voicing: folk
 
 part: verse
 | C                       Am
-| D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
+| D--- D-U- --U- X--- | --U- D-U- --U- D-U-
 part: chorus
 | F                       G
 | D--- D-U- --U- D-U- | --U- D-U- --U- D-U-
 ```
 
+`voicing: folk` selects built-in guitar chord shapes. In strum patterns, `D` is a downstroke, `U` is an upstroke, `-` is a rest, and `X` is a muted strum.
+
 After running the command, `output.mid` can be opened in a MIDI player, DAW, or MIDI inspection tool.
 
-The repository also includes [canonical-example.strum](canonical-example.strum), which demonstrates the supported metadata, part markers, chord placement, bar separators, repeat markers, rests, muted strums, and sharp/flat chords.
+The repository also includes [canonical-example.strum](canonical-example.strum), which demonstrates the supported metadata, voicing, part markers, chord placement, bar separators, repeat markers, rests, muted strums, and sharp/flat chords.
+
+For a fuller explanation of the file format and command-line options, see [USER_GUIDE.md](USER_GUIDE.md).
 
 ## How to Build
 
