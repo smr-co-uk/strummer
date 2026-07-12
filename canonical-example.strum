@@ -3,6 +3,7 @@ time: 4/4
 velocity: 86
 strum_spread_ms: 18
 instrument: acoustic_guitar
+voicing: folk
 beat: quarter
 subdivision: 16
 count: 1e&a
@@ -28,4 +29,4 @@ part: chorus
 
 part: outro
 | C
-| D--- ---- ---- ----
+| X--- D--- X--- ----
