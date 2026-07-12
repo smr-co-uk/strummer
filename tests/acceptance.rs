@@ -8,15 +8,38 @@ use std::{
 };
 
 fn run_case(name: &str, input: &str, args: &[&str]) -> (std::process::Output, PathBuf) {
-    let root = std::env::temp_dir().join(format!("strum2midi-test-{name}-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&root);
-    fs::create_dir_all(&root).unwrap();
+    let root = temp_case_root(name);
     fs::write(root.join("song.strum"), input).unwrap();
 
     let mut command = Command::new(env!("CARGO_BIN_EXE_strum2midi"));
     command.current_dir(&root);
     command.arg("song.strum").arg("song.mid").args(args);
     (command.output().unwrap(), root)
+}
+
+fn run_case_with_files(
+    name: &str,
+    input: &str,
+    files: &[(&str, &str)],
+    args: &[&str],
+) -> (std::process::Output, PathBuf) {
+    let root = temp_case_root(name);
+    fs::write(root.join("song.strum"), input).unwrap();
+    for (path, content) in files {
+        fs::write(root.join(path), content).unwrap();
+    }
+
+    let mut command = Command::new(env!("CARGO_BIN_EXE_strum2midi"));
+    command.current_dir(&root);
+    command.arg("song.strum").arg("song.mid").args(args);
+    (command.output().unwrap(), root)
+}
+
+fn temp_case_root(name: &str) -> PathBuf {
+    let root = std::env::temp_dir().join(format!("strum2midi-test-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).unwrap();
+    root
 }
 
 #[test]
@@ -450,6 +473,165 @@ fn subdiv_005_rejects_repeat_marker_without_previous_bar() {
     assert!(stderr(&output).contains("repeat marker requires a previous bar"));
 }
 
+#[test]
+fn voice_001_uses_builtin_folk_voicing_set() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C\n| D--- ---- ---- ----\n";
+    let (output, root) = run_case("folk-voicing", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_note_on_order(&midi, &[48, 52, 55, 60, 64]);
+}
+
+#[test]
+fn voice_002_uses_builtin_rock_voicing_set() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: rock\n\n| C5\n| D--- ---- ---- ----\n";
+    let (output, root) = run_case("rock-voicing", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_note_on_order(&midi, &[48, 55, 60]);
+}
+
+#[test]
+fn voice_003_command_line_voicing_overrides_metadata() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C5\n| D--- ---- ---- ----\n";
+    let (output, root) = run_case("voicing-override", input, &["--voicing", "rock"]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    assert_note_on_order(&midi, &[48, 55, 60]);
+}
+
+#[test]
+fn voice_004_uses_custom_voicing_file() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C\n| D--- ---- ---- ----\n";
+    let (output, root) = run_case_with_files(
+        "custom-voicing",
+        input,
+        &[(
+            "custom.yaml",
+            "name: custom\nvoicings:\n  C:\n    - id: preferred-c\n      frets: [x, 3, 2, 0, 1, 0]\n      priority: 200\n",
+        )],
+        &["--voicing-file", "custom.yaml"],
+    );
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(Path::new(&root.join("song.mid")).exists());
+}
+
+#[test]
+fn voice_005_rejects_invalid_fret_value() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C\n| D--- ---- ---- ----\n";
+    let (output, _root) = run_case_with_files(
+        "bad-custom-voicing",
+        input,
+        &[(
+            "custom.yaml",
+            "name: custom\nvoicings:\n  C:\n    - id: bad\n      frets: [x, 29, 2, 0, 1, 0]\n",
+        )],
+        &["--voicing-file", "custom.yaml"],
+    );
+
+    assert!(!output.status.success());
+    assert!(stderr(&output).contains("fret value 29"));
+}
+
+#[test]
+fn voice_006_rejects_recognised_chord_without_matching_voicing() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C#13\n| D--- ---- ---- ----\n";
+    let (output, _root) = run_case("missing-voicing", input, &[]);
+
+    assert!(!output.status.success());
+    let stderr = stderr(&output);
+    assert!(stderr.contains("C#13"));
+    assert!(stderr.contains("folk"));
+    assert!(stderr.contains("no compatible"));
+}
+
+#[test]
+fn voice_007_prints_folk_chord_shape() {
+    let root = temp_case_root("chords");
+    let output = Command::new(env!("CARGO_BIN_EXE_strum2midi"))
+        .current_dir(&root)
+        .args(["chords", "C"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("C  x32010"));
+}
+
+#[test]
+fn voice_008_prints_folk_chord_diagram() {
+    let root = temp_case_root("diagram");
+    let output = Command::new(env!("CARGO_BIN_EXE_strum2midi"))
+        .current_dir(&root)
+        .args(["chords", "C", "--diagram"])
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("e|--0--"));
+    assert!(stdout.contains("A|--3--"));
+    assert!(stdout.contains("E|--x--"));
+}
+
+#[test]
+fn voice_009_voiced_upstroke_has_distinct_order_and_velocity() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C\n| U--- ---- ---- ----\n";
+    let (output, root) = run_case("voiced-upstroke", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    let events = note_events(&midi)
+        .into_iter()
+        .filter(|(status, _note, velocity)| *status == 0x90 && *velocity > 0)
+        .collect::<Vec<_>>();
+    let notes = events
+        .iter()
+        .map(|(_status, note, _velocity)| *note)
+        .collect::<Vec<_>>();
+    let velocities = events
+        .iter()
+        .map(|(_status, _note, velocity)| *velocity)
+        .collect::<Vec<_>>();
+
+    assert_eq!(notes, vec![64, 60, 55, 52]);
+    assert!(velocities[0] < 90);
+    assert!(velocities.windows(2).all(|window| window[0] > window[1]));
+}
+
+#[test]
+fn voice_010_command_line_stroke_spread_overrides_metadata() {
+    let input = "tempo: 120\ntime: 4/4\nvoicing: folk\ndownstroke_spread_ms: 100\n\n| C\n| D--- ---- ---- ----\n";
+    let (output, root) = run_case(
+        "stroke-spread-cli",
+        input,
+        &[
+            "--downstroke-spread-ms",
+            "200",
+            "--upstroke-spread-ms",
+            "120",
+        ],
+    );
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    let midi = fs::read(root.join("song.mid")).unwrap();
+    let ticks = note_on_ticks(&midi);
+    assert_eq!(&ticks[..5], &[0, 48, 96, 144, 192]);
+}
+
+#[test]
+fn voice_011_folk_voicing_supports_chromatic_major_minor_and_seventh_chords() {
+    let input = "tempo: 92\ntime: 4/4\nvoicing: folk\n\n| F#      Gbm     Bb7     Cbmaj7\n| D---    D---    D---    D---\n| E#m7    Db      Ebm     B#7\n| D---    D---    D---    D---\n";
+    let (output, root) = run_case("folk-chromatic-voicings", input, &[]);
+
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(Path::new(&root.join("song.mid")).exists());
+}
+
 fn stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).to_string()
 }
@@ -467,6 +649,70 @@ fn note_on_notes(midi: &[u8]) -> Vec<u8> {
         .filter(|(status, _note, velocity)| *status == 0x90 && *velocity > 0)
         .map(|(_status, note, _velocity)| *note)
         .collect()
+}
+
+fn assert_note_on_order(midi: &[u8], expected: &[u8]) {
+    let notes = note_on_notes(midi);
+    assert_eq!(&notes[..expected.len()], expected);
+}
+
+fn note_on_ticks(midi: &[u8]) -> Vec<u32> {
+    let Some(track_start) = midi.windows(4).position(|window| window == b"MTrk") else {
+        return Vec::new();
+    };
+    let mut index = track_start + 8;
+    let mut tick = 0_u32;
+    let mut ticks = Vec::new();
+
+    while index < midi.len() {
+        tick += read_delta(midi, &mut index);
+        if index >= midi.len() {
+            break;
+        }
+
+        let status = midi[index];
+        index += 1;
+        match status {
+            0x80..=0x9F => {
+                if index + 2 > midi.len() {
+                    break;
+                }
+                if status == 0x90 && midi[index + 1] > 0 {
+                    ticks.push(tick);
+                }
+                index += 2;
+            }
+            0xC0..=0xDF => {
+                if index + 1 > midi.len() {
+                    break;
+                }
+                index += 1;
+            }
+            0xFF => {
+                if index + 1 >= midi.len() {
+                    break;
+                }
+                let length = usize::from(midi[index + 1]);
+                index += 2 + length;
+            }
+            _ => break,
+        }
+    }
+
+    ticks
+}
+
+fn read_delta(midi: &[u8], index: &mut usize) -> u32 {
+    let mut value = 0_u32;
+    while *index < midi.len() {
+        let byte = midi[*index];
+        *index += 1;
+        value = (value << 7) | u32::from(byte & 0x7F);
+        if byte & 0x80 == 0 {
+            break;
+        }
+    }
+    value
 }
 
 fn note_events(midi: &[u8]) -> Vec<(u8, u8, u8)> {

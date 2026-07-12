@@ -144,6 +144,8 @@ The `folk` set should prefer:
 - five- or six-string voicings
 - low fret positions
 
+The `folk` set shall include compatible voicings for major, minor, dominant seventh, major seventh, and minor seventh qualities across the supported natural, sharp, flat, and enharmonic root spellings.
+
 Examples:
 
 ```text
@@ -270,14 +272,18 @@ Suggested defaults:
 ```text
 downstroke_velocity: 90
 upstroke_velocity: 72
-downstroke_spread_ms: 22
-upstroke_spread_ms: 14
+downstroke_spread_ms: 28
+upstroke_spread_ms: 22
 upstroke_max_strings: 4
 ```
 
 These values shall be configurable.
 
 ### 5.4 Velocity and timing
+
+`downstroke_spread_ms` and `upstroke_spread_ms` are the total elapsed time from the first struck string to the last struck string in the stroke.
+
+The renderer shall space the struck string notes evenly inside that total stroke duration.
 
 The renderer should avoid assigning exactly the same velocity to every string.
 
@@ -352,6 +358,8 @@ Optional flags may include:
 --upstroke-spread-ms
 --upstroke-max-strings
 ```
+
+`--downstroke-spread-ms` and `--upstroke-spread-ms` override `downstroke_spread_ms` and `upstroke_spread_ms` metadata respectively.
 
 ## 8. Architecture Guidance
 

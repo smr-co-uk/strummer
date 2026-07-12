@@ -22,6 +22,21 @@ Feature: Resolve harmony, select guitar voicings, and render realistic strums
       Then the command should succeed
       And the selected C voicing should be "x32010"
 
+    Scenario: Folk voicings cover chromatic major minor and seventh chords
+      Given a strum file containing:
+        """
+        tempo: 92
+        time: 4/4
+        voicing: folk
+
+        | F#      Gbm     Bb7     Cbmaj7
+        | D---    D---    D---    D---
+        | E#m7    Db      Ebm     B#7
+        | D---    D---    D---    D---
+        """
+      When I generate MIDI
+      Then the command should succeed
+
     Scenario: Use the built-in rock voicing set
       Given a strum file containing:
         """
