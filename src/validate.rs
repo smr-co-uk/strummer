@@ -6,9 +6,18 @@ use crate::{
     error::{AppError, Result},
     model::{Beat, CountStyle, Song, TimeSignature},
     timing,
+    voicing::VoicingLibrary,
 };
 
 pub fn validate(song: &Song) -> Result<()> {
+    validate_with_voicings(song, None, None)
+}
+
+pub fn validate_with_voicings(
+    song: &Song,
+    override_voicing: Option<&str>,
+    custom_voicings: Option<&VoicingLibrary>,
+) -> Result<()> {
     let Some(tempo) = song.metadata.tempo else {
         return Err(AppError::Validation("missing tempo".to_string()));
     };
@@ -18,6 +27,8 @@ pub fn validate(song: &Song) -> Result<()> {
         ));
     }
     validate_velocity(song.metadata.velocity)?;
+    validate_velocity(song.metadata.downstroke_velocity)?;
+    validate_velocity(song.metadata.upstroke_velocity)?;
     let Some(time_signature) = song.metadata.time_signature else {
         return Err(AppError::Validation("missing time signature".to_string()));
     };
@@ -28,6 +39,7 @@ pub fn validate(song: &Song) -> Result<()> {
     let beat = resolved_beat(song, time_signature)?;
     let subdivision = resolved_subdivision(song)?;
     validate_count(song.metadata.count, beat, subdivision)?;
+    let active_voicing = override_voicing.or(song.metadata.voicing.as_deref());
     let expected_beats = expected_beat_patterns(time_signature, beat)?;
     let expected_slots = timing::slots_per_beat(beat, subdivision)?;
     for bar in &song.bars {
@@ -39,7 +51,11 @@ pub fn validate(song: &Song) -> Result<()> {
             )));
         }
         for beat in &bar.beats {
-            if chord::notes_for_chord(&beat.chord).is_none() {
+            if let Some(voicing_set) = active_voicing {
+                crate::voicing::select_voicing(&beat.chord, voicing_set, custom_voicings).map_err(
+                    |err| AppError::Validation(format!("Line {}: {err}", beat.chord_line)),
+                )?;
+            } else if chord::notes_for_chord(&beat.chord).is_none() {
                 return Err(AppError::Validation(format!(
                     "Line {}: unknown chord '{}'",
                     beat.chord_line, beat.chord

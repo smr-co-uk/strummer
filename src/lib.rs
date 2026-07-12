@@ -3,11 +3,13 @@
 
 pub mod chord;
 pub mod error;
+pub mod harmony;
 pub mod midi_writer;
 pub mod model;
 pub mod parser;
 pub mod timing;
 pub mod validate;
+pub mod voicing;
 
 pub use error::{AppError, Result};
 pub use midi_writer::MidiOptions;

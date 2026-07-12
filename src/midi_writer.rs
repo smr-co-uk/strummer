@@ -6,12 +6,17 @@ use crate::{
     error::{AppError, Result},
     model::{Song, StrumSymbol},
     timing,
+    voicing::{self, VoicingLibrary},
 };
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MidiOptions {
     pub velocity: Option<u8>,
     pub strum_spread_ms: Option<u16>,
+    pub downstroke_spread_ms: Option<u16>,
+    pub upstroke_spread_ms: Option<u16>,
+    pub voicing: Option<String>,
+    pub custom_voicings: Option<VoicingLibrary>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +50,9 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
     let velocity = crate::validate::resolved_velocity(song, options.velocity)?;
     let strum_spread_ms = crate::validate::resolved_strum_spread_ms(song, options.strum_spread_ms);
     let spread_ticks = timing::ms_to_ticks(strum_spread_ms, tempo);
+    let active_voicing = options.voicing.as_ref().or(song.metadata.voicing.as_ref());
+    let voiced_settings =
+        VoicedStrumSettings::resolve(song, &options, tempo, velocity, strum_spread_ms);
     let mut events = Vec::new();
     let bar_ticks = timing::bar_ticks(song)?;
 
@@ -59,11 +67,28 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
     for (bar_index, bar) in song.bars.iter().enumerate() {
         let bar_start = checked_mul(to_u32(bar_index)?, bar_ticks)?;
         for (beat_index, beat) in bar.beats.iter().enumerate() {
-            let chord_notes = chord::notes_for_chord(&beat.chord).ok_or_else(|| {
-                AppError::Validation(format!(
-                    "Line {}: unknown chord '{}'",
-                    beat.chord_line, beat.chord
-                ))
+            let rendered_notes = if let Some(voicing_set) = active_voicing {
+                voicing::select_voicing(&beat.chord, voicing_set, options.custom_voicings.as_ref())
+                    .ok()
+                    .map(|selected| {
+                        RenderedNotes::Voiced(
+                            selected
+                                .notes
+                                .iter()
+                                .map(|note| note.midi_note)
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+            } else {
+                chord::notes_for_chord(&beat.chord).map(RenderedNotes::Legacy)
+            }
+            .ok_or_else(|| {
+                chord_error(
+                    beat.chord_line,
+                    beat.chord.as_str(),
+                    active_voicing.map(String::as_str),
+                    options.custom_voicings.as_ref(),
+                )
             })?;
             for (slot_index, symbol) in beat.slots.iter().enumerate() {
                 let beat_slot_offset = checked_add(
@@ -73,27 +98,49 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
                 let slot_offset = checked_mul(beat_slot_offset, slot_ticks)?;
                 let tick = checked_add(bar_start, slot_offset)?;
                 match symbol {
-                    StrumSymbol::Down => push_strum(
-                        &mut events,
-                        tick,
-                        &chord_notes,
-                        false,
-                        velocity,
-                        note_duration,
-                        spread_ticks,
-                    )?,
-                    StrumSymbol::Up => push_strum(
-                        &mut events,
-                        tick,
-                        &chord_notes,
-                        true,
-                        velocity,
-                        note_duration,
-                        spread_ticks,
-                    )?,
-                    StrumSymbol::Muted => {
-                        push_muted(&mut events, tick, &chord_notes, note_duration)?
-                    }
+                    StrumSymbol::Down => match &rendered_notes {
+                        RenderedNotes::Legacy(notes) => push_legacy_strum(
+                            &mut events,
+                            tick,
+                            notes,
+                            false,
+                            velocity,
+                            note_duration,
+                            spread_ticks,
+                        )?,
+                        RenderedNotes::Voiced(notes) => push_voiced_strum(
+                            &mut events,
+                            tick,
+                            notes,
+                            Stroke::Down,
+                            note_duration,
+                            voiced_settings,
+                        )?,
+                    },
+                    StrumSymbol::Up => match &rendered_notes {
+                        RenderedNotes::Legacy(notes) => push_legacy_strum(
+                            &mut events,
+                            tick,
+                            notes,
+                            true,
+                            velocity,
+                            note_duration,
+                            spread_ticks,
+                        )?,
+                        RenderedNotes::Voiced(notes) => push_voiced_strum(
+                            &mut events,
+                            tick,
+                            notes,
+                            Stroke::Up,
+                            note_duration,
+                            voiced_settings,
+                        )?,
+                    },
+                    StrumSymbol::Muted => match &rendered_notes {
+                        RenderedNotes::Legacy(notes) | RenderedNotes::Voiced(notes) => {
+                            push_muted(&mut events, tick, notes, note_duration)?
+                        }
+                    },
                     StrumSymbol::Rest => {}
                 }
             }
@@ -141,7 +188,62 @@ pub fn write_midi(song: &Song, options: MidiOptions) -> Result<Vec<u8>> {
     Ok(file)
 }
 
-fn push_strum(
+#[derive(Debug, Clone, Copy)]
+enum Stroke {
+    Down,
+    Up,
+}
+
+#[derive(Debug, Clone)]
+enum RenderedNotes {
+    Legacy(Vec<u8>),
+    Voiced(Vec<u8>),
+}
+
+#[derive(Debug, Clone, Copy)]
+struct VoicedStrumSettings {
+    down_velocity: u8,
+    up_velocity: u8,
+    down_sweep_ticks: u32,
+    up_sweep_ticks: u32,
+    up_max_strings: usize,
+}
+
+impl VoicedStrumSettings {
+    fn resolve(
+        song: &Song,
+        options: &MidiOptions,
+        tempo: u16,
+        default_velocity: u8,
+        default_spread_ms: u16,
+    ) -> Self {
+        let down_velocity = song
+            .metadata
+            .downstroke_velocity
+            .unwrap_or(default_velocity);
+        let up_velocity = song
+            .metadata
+            .upstroke_velocity
+            .unwrap_or_else(|| down_velocity.saturating_mul(4) / 5);
+        let down_spread_ms = options
+            .downstroke_spread_ms
+            .or(song.metadata.downstroke_spread_ms)
+            .unwrap_or(default_spread_ms.max(28));
+        let up_spread_ms = options
+            .upstroke_spread_ms
+            .or(song.metadata.upstroke_spread_ms)
+            .unwrap_or(default_spread_ms.max(22));
+        Self {
+            down_velocity,
+            up_velocity,
+            down_sweep_ticks: timing::ms_to_ticks(down_spread_ms, tempo),
+            up_sweep_ticks: timing::ms_to_ticks(up_spread_ms, tempo),
+            up_max_strings: usize::from(song.metadata.upstroke_max_strings.unwrap_or(4).max(1)),
+        }
+    }
+}
+
+fn push_legacy_strum(
     events: &mut Vec<MidiEvent>,
     tick: u32,
     notes: &[u8],
@@ -170,6 +272,69 @@ fn push_strum(
         });
     }
     Ok(())
+}
+
+fn push_voiced_strum(
+    events: &mut Vec<MidiEvent>,
+    tick: u32,
+    notes: &[u8],
+    stroke: Stroke,
+    duration: u32,
+    settings: VoicedStrumSettings,
+) -> Result<()> {
+    let mut ordered = notes.to_vec();
+    let (base_velocity, stroke_sweep) = match stroke {
+        Stroke::Down => (settings.down_velocity, settings.down_sweep_ticks),
+        Stroke::Up => (settings.up_velocity, settings.up_sweep_ticks),
+    };
+    if matches!(stroke, Stroke::Up) {
+        ordered.reverse();
+        if ordered.len() > settings.up_max_strings {
+            ordered.truncate(settings.up_max_strings);
+        }
+    }
+    let stroke_gap = strum_gap_ticks(stroke_sweep, ordered.len())?;
+
+    for (index, note) in ordered.iter().enumerate() {
+        let note_tick = checked_add(tick, checked_mul(to_u32(index)?, stroke_gap)?)?;
+        let taper = u8::try_from(index).unwrap_or(u8::MAX).saturating_mul(3);
+        let note_velocity = base_velocity.saturating_sub(taper).max(1);
+        events.push(MidiEvent {
+            tick: note_tick,
+            order: 1,
+            bytes: vec![0x90, *note, note_velocity],
+        });
+        events.push(MidiEvent {
+            tick: checked_add(note_tick, duration)?,
+            order: 0,
+            bytes: vec![0x80, *note, 0],
+        });
+    }
+    Ok(())
+}
+
+fn strum_gap_ticks(sweep_ticks: u32, note_count: usize) -> Result<u32> {
+    if note_count <= 1 {
+        return Ok(0);
+    }
+    let gaps = to_u32(note_count - 1)?;
+    Ok((sweep_ticks / gaps).max(1))
+}
+
+fn chord_error(
+    line: usize,
+    chord: &str,
+    voicing_set: Option<&str>,
+    custom_voicings: Option<&VoicingLibrary>,
+) -> AppError {
+    if let Some(voicing_set) = voicing_set {
+        match voicing::select_voicing(chord, voicing_set, custom_voicings) {
+            Ok(_) => AppError::Validation(format!("Line {line}: unknown chord '{chord}'")),
+            Err(err) => AppError::Validation(format!("Line {line}: {err}")),
+        }
+    } else {
+        AppError::Validation(format!("Line {line}: unknown chord '{chord}'"))
+    }
 }
 
 fn push_muted(events: &mut Vec<MidiEvent>, tick: u32, notes: &[u8], duration: u32) -> Result<()> {
@@ -256,6 +421,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -281,6 +447,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -323,10 +490,16 @@ mod tests {
                 }),
                 velocity: None,
                 strum_spread_ms: None,
+                downstroke_velocity: None,
+                upstroke_velocity: None,
+                downstroke_spread_ms: None,
+                upstroke_spread_ms: None,
+                upstroke_max_strings: None,
                 beat: None,
                 subdivision: None,
                 count: None,
                 instrument: None,
+                voicing: None,
             },
             parts: Vec::new(),
             warnings: Vec::new(),
@@ -338,6 +511,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap_err();
@@ -356,10 +530,16 @@ mod tests {
                 }),
                 velocity: None,
                 strum_spread_ms: None,
+                downstroke_velocity: None,
+                upstroke_velocity: None,
+                downstroke_spread_ms: None,
+                upstroke_spread_ms: None,
+                upstroke_max_strings: None,
                 beat: None,
                 subdivision: None,
                 count: None,
                 instrument: None,
+                voicing: None,
             },
             parts: Vec::new(),
             warnings: Vec::new(),
@@ -400,6 +580,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap_err();
@@ -414,6 +595,27 @@ mod tests {
     }
 
     #[test]
+    fn voiced_spread_is_total_sweep_length() {
+        assert_eq!(strum_gap_ticks(120, 5).unwrap(), 30);
+        assert_eq!(strum_gap_ticks(120, 4).unwrap(), 40);
+        assert_eq!(strum_gap_ticks(120, 1).unwrap(), 0);
+    }
+
+    #[test]
+    fn voiced_downstroke_notes_are_equally_spaced_across_total_sweep() {
+        let song = parser::parse(
+            "tempo: 120\ntime: 4/4\nvoicing: folk\ndownstroke_spread_ms: 100\n\n| C\n| D--- ---- ---- ----\n",
+        )
+        .unwrap();
+        validate::validate(&song).unwrap();
+
+        let midi = write_midi(&song, MidiOptions::default()).unwrap();
+        let ticks = note_on_ticks(&midi);
+
+        assert_eq!(&ticks[..5], &[0, 24, 48, 72, 96]);
+    }
+
+    #[test]
     fn downstroke_orders_notes_low_to_high() {
         let song = parser::parse("tempo: 92\ntime: 4/4\n\n| C\n| D--- ---- ---- ----\n").unwrap();
         validate::validate(&song).unwrap();
@@ -423,6 +625,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -440,6 +643,7 @@ mod tests {
             MidiOptions {
                 velocity: Some(90),
                 strum_spread_ms: Some(20),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -455,5 +659,63 @@ mod tests {
             .take(expected.len())
             .collect::<Vec<_>>();
         assert_eq!(notes, expected);
+    }
+
+    fn note_on_ticks(midi: &[u8]) -> Vec<u32> {
+        let Some(track_start) = midi.windows(4).position(|window| window == b"MTrk") else {
+            return Vec::new();
+        };
+        let mut index = track_start + 8;
+        let mut tick = 0_u32;
+        let mut ticks = Vec::new();
+
+        while index < midi.len() {
+            let delta = read_delta(midi, &mut index);
+            tick += delta;
+            if index >= midi.len() {
+                break;
+            }
+
+            let status = midi[index];
+            index += 1;
+            match status {
+                0x80..=0x9F => {
+                    if index + 2 > midi.len() {
+                        break;
+                    }
+                    let velocity = midi[index + 1];
+                    if status == 0x90 && velocity > 0 {
+                        ticks.push(tick);
+                    }
+                    index += 2;
+                }
+                0xC0..=0xDF => {
+                    index += 1;
+                }
+                0xFF => {
+                    if index + 1 >= midi.len() {
+                        break;
+                    }
+                    let length = usize::from(midi[index + 1]);
+                    index += 2 + length;
+                }
+                _ => break,
+            }
+        }
+
+        ticks
+    }
+
+    fn read_delta(midi: &[u8], index: &mut usize) -> u32 {
+        let mut value = 0_u32;
+        while *index < midi.len() {
+            let byte = midi[*index];
+            *index += 1;
+            value = (value << 7) | u32::from(byte & 0x7F);
+            if byte & 0x80 == 0 {
+                break;
+            }
+        }
+        value
     }
 }

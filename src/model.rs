@@ -22,10 +22,16 @@ pub struct Metadata {
     pub time_signature: Option<TimeSignature>,
     pub velocity: Option<u8>,
     pub strum_spread_ms: Option<u16>,
+    pub downstroke_velocity: Option<u8>,
+    pub upstroke_velocity: Option<u8>,
+    pub downstroke_spread_ms: Option<u16>,
+    pub upstroke_spread_ms: Option<u16>,
+    pub upstroke_max_strings: Option<u8>,
     pub beat: Option<Beat>,
     pub subdivision: Option<u8>,
     pub count: Option<CountStyle>,
     pub instrument: Option<Instrument>,
+    pub voicing: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

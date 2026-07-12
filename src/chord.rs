@@ -2,51 +2,37 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub fn notes_for_chord(name: &str) -> Option<Vec<u8>> {
-    let (root_name, quality) = split_chord_name(name)?;
-    let root = root_midi_note(root_name)?;
-
-    let intervals = match quality {
-        Quality::Major => &[0, 4, 7][..],
-        Quality::Minor => &[0, 3, 7][..],
-        Quality::Seventh => &[0, 4, 7, 10][..],
-    };
-
-    Some(intervals.iter().map(|interval| root + interval).collect())
+    let harmony = crate::harmony::resolve(name).ok()?;
+    let root = root_midi_note(harmony.root.as_str())?;
+    Some(
+        harmony
+            .intervals
+            .iter()
+            .map(|interval| root + interval)
+            .collect(),
+    )
 }
 
-fn split_chord_name(name: &str) -> Option<(&str, Quality)> {
-    if let Some(root) = name.strip_suffix('m') {
-        Some((root, Quality::Minor))
-    } else if let Some(root) = name.strip_suffix('7') {
-        Some((root, Quality::Seventh))
-    } else {
-        Some((name, Quality::Major))
-    }
-}
-
-fn root_midi_note(root_name: &str) -> Option<u8> {
+pub fn root_pitch_class(root_name: &str) -> Option<u8> {
     match root_name {
-        "C" => Some(48),
-        "C#" | "Db" => Some(49),
-        "D" => Some(50),
-        "D#" | "Eb" => Some(51),
-        "E" | "Fb" => Some(52),
-        "E#" | "F" => Some(53),
-        "F#" | "Gb" => Some(54),
-        "G" => Some(55),
-        "G#" | "Ab" => Some(56),
-        "A" => Some(57),
-        "A#" | "Bb" => Some(58),
-        "B" | "Cb" => Some(59),
-        "B#" => Some(60),
+        "C" | "B#" => Some(0),
+        "C#" | "Db" => Some(1),
+        "D" => Some(2),
+        "D#" | "Eb" => Some(3),
+        "E" | "Fb" => Some(4),
+        "E#" | "F" => Some(5),
+        "F#" | "Gb" => Some(6),
+        "G" => Some(7),
+        "G#" | "Ab" => Some(8),
+        "A" => Some(9),
+        "A#" | "Bb" => Some(10),
+        "B" | "Cb" => Some(11),
         _ => None,
     }
 }
 
-enum Quality {
-    Major,
-    Minor,
-    Seventh,
+fn root_midi_note(root_name: &str) -> Option<u8> {
+    Some(48 + root_pitch_class(root_name)?)
 }
 
 #[cfg(test)]

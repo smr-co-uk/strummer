@@ -160,10 +160,16 @@ fn looks_like_metadata(line: &str) -> bool {
             | "time"
             | "velocity"
             | "strum_spread_ms"
+            | "downstroke_velocity"
+            | "upstroke_velocity"
+            | "downstroke_spread_ms"
+            | "upstroke_spread_ms"
+            | "upstroke_max_strings"
             | "beat"
             | "subdivision"
             | "count"
             | "instrument"
+            | "voicing"
     )
 }
 
@@ -175,10 +181,16 @@ fn looks_like_malformed_metadata(line: &str) -> bool {
             | "time"
             | "velocity"
             | "strum_spread_ms"
+            | "downstroke_velocity"
+            | "upstroke_velocity"
+            | "downstroke_spread_ms"
+            | "upstroke_spread_ms"
+            | "upstroke_max_strings"
             | "beat"
             | "subdivision"
             | "count"
             | "instrument"
+            | "voicing"
     ) && !line.contains(':')
 }
 
@@ -326,6 +338,31 @@ fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) 
                 AppError::Parse(format!("Line {line_number}: malformed metadata line"))
             })?);
         }
+        "downstroke_velocity" => {
+            metadata.downstroke_velocity = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "upstroke_velocity" => {
+            metadata.upstroke_velocity = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "downstroke_spread_ms" => {
+            metadata.downstroke_spread_ms = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "upstroke_spread_ms" => {
+            metadata.upstroke_spread_ms = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
+        "upstroke_max_strings" => {
+            metadata.upstroke_max_strings = Some(value.parse().map_err(|_| {
+                AppError::Parse(format!("Line {line_number}: malformed metadata line"))
+            })?);
+        }
         "time" => {
             let Some((numerator, denominator)) = value.split_once('/') else {
                 return Err(AppError::Parse(format!(
@@ -381,6 +418,9 @@ fn parse_metadata_line(line: &str, line_number: usize, metadata: &mut Metadata) 
                     )));
                 }
             });
+        }
+        "voicing" => {
+            metadata.voicing = Some(value.to_string());
         }
         _ => {
             return Err(AppError::Parse(format!(
@@ -591,6 +631,7 @@ mod tests {
         assert_eq!(song.metadata.subdivision, Some(8));
         assert_eq!(song.metadata.count, Some(CountStyle::OneAnd));
         assert_eq!(song.metadata.instrument, None);
+        assert_eq!(song.metadata.voicing, None);
         assert!(song.parts.is_empty());
         assert_eq!(song.bars.len(), 2);
         assert_eq!(song.bars[0].beats[0].chord, "C");
@@ -691,6 +732,14 @@ mod tests {
 
         assert_eq!(song.metadata.velocity, Some(64));
         assert_eq!(song.metadata.strum_spread_ms, Some(15));
+    }
+
+    #[test]
+    fn parses_voicing_metadata() {
+        let song =
+            parse("tempo: 92\ntime: 4/4\nvoicing: folk\n\n| C\n| D--- ---- ---- ----\n").unwrap();
+
+        assert_eq!(song.metadata.voicing.as_deref(), Some("folk"));
     }
 
     #[test]
